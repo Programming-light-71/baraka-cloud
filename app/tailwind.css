@@ -10,3 +10,16 @@ body {
     color-scheme: dark;
   }
 }
+
+.active-link {
+  @apply text-white font-bold flex items-center gap-3 relative;
+}
+
+.active-link::before {
+  content: '';
+  @apply w-1 h-[100%] bg-white absolute -left-3 rounded-e-3xl;
+}
+
+.inactive-link {
+  @apply flex items-center gap-3;
+}

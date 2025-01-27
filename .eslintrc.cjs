@@ -6,6 +6,10 @@
 
 /** @type {import('eslint').Linter.Config} */
 module.exports = {
+  rules: {
+    // Disable `no-explicit-any` rule
+    "@typescript-eslint/no-explicit-any": "off",
+  },
   root: true,
   parserOptions: {
     ecmaVersion: "latest",
@@ -35,6 +39,10 @@ module.exports = {
         "plugin:react-hooks/recommended",
         "plugin:jsx-a11y/recommended",
       ],
+      rules: {
+        // Disable `no-explicit-any` rule
+        "@typescript-eslint/no-explicit-any": "off",
+      },
       settings: {
         react: {
           version: "detect",
@@ -48,6 +56,7 @@ module.exports = {
           typescript: {},
         },
       },
+
     },
 
     // Typescript
