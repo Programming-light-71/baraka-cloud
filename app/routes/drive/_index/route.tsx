@@ -5,6 +5,8 @@ import { CloudUpload } from "lucide-react";
 import DHeader from "~/components/drive/dHeader";
 import { Button } from "~/components/ui/button";
 
+import { fileUploader } from "~/utils/shared-utils/fileHandlerController";
+
 // const uniqueId = generateUniqueId();
 
 export async function action({ request }: ActionFunctionArgs) {
@@ -16,46 +18,21 @@ export async function action({ request }: ActionFunctionArgs) {
     if (!file || !(file instanceof File)) {
       return json({ error: "No file uploaded or invalid file" });
     }
-    console.log("process?.env?.chat_id", process.env.BOT_TOKEN);
-    console.log("process?.env?.chat_id", process?.env?.chat_id);
-    // Read the file content as buffer
-    // const fileBuffer = Buffer.from(await file.arrayBuffer());
-    const fileName = file.name;
-    // const fileType = file.type;
 
-    // Prepare FormData to send to Telegram API
-    const form = new FormData();
-    const chatId = process.env.chat_id;
-    if (!chatId) {
-      return json({ error: "Chat ID is not defined in environment variables" });
-    }
-    form.append("chat_id", chatId);
-    form.append("document", file);
-    form.append("caption", `File: ${fileName}`);
+    const uploadedData = await fileUploader({
+      file,
+      user_id: "152",
+    });
 
-    // Send the file to Telegram Bot
-    const response = await fetch(
-      `https://api.telegram.org/bot${process.env.BOT_TOKEN}/sendDocument`,
-      {
-        method: "POST",
-        body: JSON.stringify({
-          chat_id: chatId,
-          text: `Here is the YouTube video: https://www.youtube.com/watch?v=7hRndyMhJcA`,
-        }),
-      }
-    );
+    console.log("uploadedData", uploadedData);
+    // if (uploadedData && "success" in uploadedData && uploadedData.success) {
+    //   db?.file.create({});
+    // }
 
-    const data = await response.json();
-
-    if (data.ok) {
-      return json({
-        success: true,
-        message: "File sent successfully!",
-        messageId: data.result.message_id, // Get the message ID for reference
-      });
-    } else {
-      return json({ error: "Failed to send the file.", details: data });
-    }
+    return json(uploadedData, {
+      status: 201,
+      statusText: file.name + ": uploaded successfully ",
+    });
   } catch (error) {
     console.error("Error handling file:", error);
     return json({ error: "Failed to process the file" });
@@ -110,6 +87,29 @@ export default function Index() {
       <pre>
         <code>{JSON.stringify(actionResult, null, 2)}</code>
       </pre>
+
+      {actionResult && "success" in actionResult && actionResult.success && (
+        <div>
+          <h1>main file</h1>
+          <img
+            src={actionResult.data.file_path}
+            alt={actionResult.data.file_path}
+            className="max-w-full border rounded"
+          />
+          <h1>THumbnail</h1>
+          <img
+            src={actionResult.data.thumbnail}
+            alt={actionResult.data.file_path}
+            className="max-w-full border rounded"
+          />
+          <h1>Thumb</h1>
+          <img
+            src={actionResult.data.thumb}
+            alt={actionResult.data.file_path}
+            className="max-w-full border rounded"
+          />
+        </div>
+      )}
 
       {/* <h1 className="text-2xl font-bold">Drive Index</h1> */}
 
