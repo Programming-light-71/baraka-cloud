@@ -60,13 +60,15 @@ export const fileUploader = async ({ file, user_id }: fileUploaderType) => {
     }
 
     const result = data.result;
-    let fileResultToSend = {
+    const fileResultToSend = {
       mess_id: result.message_id,
       file_id: result.document?.file_id || result.video?.file_id,
       mime_type: result.document?.mime_type || result.video?.mime_type,
       thumbnail: result.document?.thumb?.file_id || null,
       thumb: result.document?.thumb?.file_id || null,
-      duration: result.video?.duration || null,
+      ...(result.video?.duration && {
+        duration: result.video?.duration || null,
+      }),
       file_size: result.document?.file_size || result.video?.file_size,
       file_path: "",
     };
