@@ -6,7 +6,7 @@ interface fileUploaderType {
 }
 
 /*====================================================
-||| //////////////////////////// Functions >>> utils /////////////////////////////////// |||
+=|| ///////////////////////////_ Functions >>> utils _///////////////////////////////// ||=
 ====================================================*/
 
 // getFileByFileId
@@ -49,7 +49,6 @@ export const fileUploader = async ({ file, user_id }: fileUploaderType) => {
     const response = await fetch(apiUrl, {
       method: "POST",
       body: form,
-      headers: form?.getHeaders ? form?.getHeaders() : {},
     });
 
     const data = await response.json();
