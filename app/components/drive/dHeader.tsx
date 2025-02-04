@@ -4,6 +4,7 @@ import React from "react";
 import { Search, Grid, ListCheck } from "lucide-react";
 import { Input } from "../ui/input";
 import { Button } from "../ui/button";
+import { useIsListStore } from "~/local_store+state/listToggle";
 
 interface DHeaderProps {
   isSearch?: boolean;
@@ -20,20 +21,16 @@ const DHeader: React.FC<DHeaderProps> = ({
   isSearch,
   pageName,
   btn,
-  isGrid = false,
-  actionData,
+  // actionData,
   pathname,
 }) => {
-  console.log(actionData);
-
-  console.log("state", pathname);
-  const [grid, setGrid] = React.useState<React.ReactNode>(false);
+  const { isList, setIsList } = useIsListStore();
 
   return (
     <div className="w-full space-y-4 px-4 py-4">
       {/* Search Bar */}
       {isSearch && (
-        <div className="relative">
+        <div className="relative rounded-md overflow-hidden">
           <Search className="absolute top-1/2 h-full left-1 search-icon px-1 -translate-y-1/2 text-[#6672FB]" />
           <div className="absolute bg-[#3b73e22a] left-0 top-1/2 h-full w-8 -translate-y-1/2" />
           <Input
@@ -51,12 +48,12 @@ const DHeader: React.FC<DHeaderProps> = ({
         </h1>
         <div className="flex items-center gap-2">
           <Button
-            onClick={() => setGrid(!grid)}
+            onClick={() => setIsList()}
             variant="ghost"
             size="icon"
             className="h-13 w-13"
           >
-            {!isGrid && !grid ? (
+            {!isList ? (
               <Grid className="h-13 w-13" />
             ) : (
               <ListCheck className="h-13 w-13" />

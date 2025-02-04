@@ -17,5 +17,5 @@ export const action = async ({ request }: ActionArgs) => {
   // const password = formData.get("password");
 
   // Perform login logic
-  return json({ success: true, username, otp });
+  return Response.json({ success: true, username, otp });
 };

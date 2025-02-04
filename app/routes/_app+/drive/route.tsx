@@ -1,6 +1,10 @@
 // routes/_index.tsx
-import type { MetaFunction } from "@remix-run/node";
-import { NavLink, Outlet, useLocation } from "@remix-run/react";
+import type {
+  ActionFunctionArgs,
+  LoaderFunctionArgs,
+  MetaFunction,
+} from "@remix-run/node";
+import { Form, NavLink, Outlet, redirect, useLocation } from "@remix-run/react";
 import {
   ChartBarStacked,
   CloudDrizzle,
@@ -11,6 +15,40 @@ import {
   Star,
   Trash2,
 } from "lucide-react";
+import { Toaster } from "react-hot-toast";
+
+import { requireAuth } from "~/utils/backend-utils/AuthProtector";
+import { destroySessionAndLogout } from "~/utils/backend-utils/CookieManager";
+
+export async function loader({ request }: LoaderFunctionArgs) {
+  try {
+    const user = await requireAuth(request);
+    if (user) {
+      return null; // Allow access
+    } else {
+      return redirect("/login");
+    }
+  } catch (error) {
+    return redirect("/login"); // Redirect if unauthorized
+  }
+}
+export async function action({ request }: ActionFunctionArgs) {
+  try {
+    const user = await requireAuth(request);
+    if (user) {
+      const logoutHeader = await destroySessionAndLogout(request);
+      return redirect("/login", {
+        headers: {
+          "Set-Cookie": logoutHeader,
+        },
+      });
+    } else {
+      return redirect("/login");
+    }
+  } catch (error) {
+    return redirect("/login"); // Redirect if unauthorized
+  }
+}
 
 export const meta: MetaFunction = () => {
   return [
@@ -24,7 +62,7 @@ export default function DriveIndex() {
   const pathname = location.pathname;
 
   return (
-    <div className="min-h-screen h-full flex">
+    <div className="min-h-screen h-full flex  ">
       {/* Sidebar */}
       <div className="w-60">
         <aside className="w-60 overflow-y-auto fixed top-0 left-0 h-screen  duration-200 transition-all bg-[#0D1248] p-4 rounded-e-3xl">
@@ -129,16 +167,16 @@ export default function DriveIndex() {
                 </NavLink>
               </li>
 
-              <li>
-                <NavLink
-                  className={({ isActive }) =>
-                    isActive ? "active-link" : "inactive-link"
-                  }
-                  to="/login"
+              <Form method="post" reloadDocument>
+                <button
+                  type="submit"
+                  className="inactive-link  "
+                  name="intent"
+                  value="logout"
                 >
                   <LogOut size={18} /> Logout
-                </NavLink>
-              </li>
+                </button>
+              </Form>
             </ul>
           </nav>
         </aside>
@@ -147,6 +185,7 @@ export default function DriveIndex() {
       {/* Main Content */}
       <main className="flex-1 p-2 md:p-4">
         <Outlet /> {/* This renders nested route content */}
+        <Toaster />
       </main>
     </div>
   );

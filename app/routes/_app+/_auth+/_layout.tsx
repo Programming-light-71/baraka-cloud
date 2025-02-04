@@ -1,12 +1,18 @@
-import { Outlet } from "@remix-run/react";
+import { Outlet, useNavigate } from "@remix-run/react";
+import { Toaster } from "react-hot-toast";
 
 const _auth = () => {
+  const navigate = useNavigate();
   return (
     <div className="w-full h-full relative text-black bg-[#d2dafa] min-h-screen">
-      <img
-        src="/logo-Light.png"
-        alt="logo"
-        className="w-36 absolute  drop-shadow-lg  p-5 filter saturate-150"
+      <button
+        onClick={() => navigate("/")}
+        className="w-36 absolute drop-shadow-lg p-6 mt-5 filter saturate-150"
+        style={{
+          background: `url('/logo-Light.png') no-repeat center/contain`,
+          border: "none",
+        }}
+        aria-label="Navigate to home"
       />
 
       <div className="flex gap-20  flex-row justify-center h-full">
@@ -29,6 +35,7 @@ const _auth = () => {
         alt="logo"
         className="h-40 drop-shadow-md absolute bottom-0 left-0"
       />
+      <Toaster></Toaster>
     </div>
   );
 };

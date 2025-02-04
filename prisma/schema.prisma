@@ -22,7 +22,7 @@ datasource db {
 model User {
   id               String           @id @default(uuid())
   email            String           @unique
-  membershipStatus MembershipStatus
+  membershipStatus MembershipStatus @default(FREE)
   emailVerified    Boolean          @default(false)
   createdAt        DateTime         @default(now())
 
@@ -37,6 +37,7 @@ model User {
 // otp verification schema
 model OtpVerification {
   id        String   @id @default(uuid())
+  email     String?
   userId    String
   otp       String
   expiresAt DateTime
@@ -61,6 +62,9 @@ model File {
   name      String
   type      String
   size      Int?
+  filePath  String
+  duration  Int?
+  thumbnail String?
   isStarred Boolean   @default(false)
   isShared  Boolean   @default(false)
   deletedAt DateTime?

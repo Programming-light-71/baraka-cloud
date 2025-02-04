@@ -1,19 +1,44 @@
-import { ActionFunctionArgs } from "@remix-run/node";
+import { ActionFunctionArgs, redirect } from "@remix-run/node";
 import { Form } from "@remix-run/react";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
+import { AuthManager } from "~/utils/backend-utils/Queries/AuthManagement";
 
 export async function action({ request }: ActionFunctionArgs) {
-  const form = await request.formData();
-  console.log(form);
-  return request.method === "post"
-    ? new Response(null, {
-        status: 303,
-        headers: {
-          Location: "/",
-        },
-      })
-    : {};
+  if (request.method !== "POST") return;
+  try {
+    const form = await request.formData();
+    const email = form.get("email");
+    if (email) {
+      const authResponse = await AuthManager({ email: email as string });
+      // console.log(authResponse);
+      if (
+        !(authResponse instanceof Response) &&
+        authResponse.success &&
+        authResponse.data.otp
+      ) {
+        return redirect(
+          ((("/otp?email=" +
+            email +
+            "&otp=" +
+            authResponse.data.otp) as string) +
+            "&userId=" +
+            authResponse.data.id) as string
+        );
+      }
+    }
+    return {};
+  } catch (error) {
+    console.error("Login error:", error);
+    return Response.json(
+      {
+        success: false,
+        error: "Internal Server Error; Login failed",
+        details: error,
+      },
+      { status: 500 }
+    );
+  }
 }
 const login = () => {
   return (
