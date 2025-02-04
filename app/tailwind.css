@@ -2,7 +2,7 @@
 @tailwind components;
 @tailwind utilities;
 
-html,
+
 body {
   @apply bg-white dark:bg-gray-950;
 
@@ -22,4 +22,8 @@ body {
 
 .inactive-link {
   @apply flex items-center gap-3;
+}
+
+InputOTP>InputOTPSlot {
+  @apply border-[#656ED3] p-1
 }

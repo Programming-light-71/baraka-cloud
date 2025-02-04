@@ -1,4 +1,5 @@
 import { vitePlugin as remix } from "@remix-run/dev";
+import { flatRoutes } from "remix-flat-routes";
 import { defineConfig } from "vite";
 import tsconfigPaths from "vite-tsconfig-paths";
 
@@ -20,27 +21,8 @@ export default defineConfig({
       },
 
       routes(defineRoutes) {
-        return defineRoutes((route) => {
-          route("drive", "routes/drive/route.tsx", () => {
-            route("", "routes/drive/_index/route.tsx", { index: true }); // Default content for `/drive`
-            route("request-files", "routes/drive/request-files/route.tsx"); // `/drive/request-files `
-            route("shared-files", "routes/drive/shared-files/route.tsx"); // `/drive/shared-files`
-            route("starred", "routes/drive/starred.tsx"); // `/drive/shared-files`
-            route("trash", "routes/drive/trash/route.tsx"); // `/drive/trash`
-            route("task", "routes/drive/task/route.tsx"); // `/drive/trash`
-            route("statistics", "routes/drive/statistics.tsx"); // `/drive/trash`
-          });
-
-          route("login", "routes/auth/_auth.tsx", () => {
-            route("", "routes/auth/login.tsx", { index: true });
-            // route("login", "routes/auth/login.tsx");
-            route("otp", "routes/auth/otp.tsx");
-          });
-
-          route("api/v1/", "routes/api/route.tsx", () => {
-            route("login", "routes/api/auth/login.tsx");
-            route("otp", "routes/api/auth/otp.tsx");
-          });
+        return flatRoutes("routes", defineRoutes, {
+          ignoredRouteFiles: ["**/.*"], // Ignore dot files (like .DS_Store)
         });
       },
     }),

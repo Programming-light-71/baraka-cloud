@@ -1,5 +1,4 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
-import { json } from "@remix-run/node";
 import type {
   LoaderFunctionArgs as LoaderArgs,
   ActionFunctionArgs as ActionArgs,
@@ -15,5 +14,5 @@ export const action = async ({ request }: ActionArgs) => {
   // const password = formData.get("password");
 
   // Perform login logic
-  return json({ success: true, username });
+  return Response.json({ success: true, username });
 };
