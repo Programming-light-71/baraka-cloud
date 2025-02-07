@@ -1,15 +1,24 @@
-import { Outlet, useNavigate } from "@remix-run/react";
+import { LoaderFunctionArgs, redirect } from "@remix-run/node";
+import { Link, Outlet } from "@remix-run/react";
 import { Toaster } from "react-hot-toast";
+import { requireAuth } from "~/utils/backend-utils/AuthProtector";
+
+export async function loader({ request }: LoaderFunctionArgs) {
+  const user = await requireAuth(request, false);
+  if (user) return redirect("/drive?index");
+  return null;
+}
 
 const _auth = () => {
-  const navigate = useNavigate();
   return (
     <div className="w-full h-full relative text-black bg-[#d2dafa] min-h-screen">
-      <button
-        onClick={() => navigate("/")}
-        className="w-36 absolute drop-shadow-lg p-6 mt-5 filter saturate-150"
+      <Link
+        to={"/"}
+        type="button"
+        title="Navigate to home"
+        className="w-36 absolute drop-shadow-lg p-6 mt-5 filter saturate-200 opacity-100 "
         style={{
-          background: `url('/logo-Light.png') no-repeat center/contain`,
+          background: `url('/logo-light.png') no-repeat center/contain`,
           border: "none",
         }}
         aria-label="Navigate to home"

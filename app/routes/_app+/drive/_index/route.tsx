@@ -22,10 +22,12 @@ import { requireAuth } from "~/utils/backend-utils/AuthProtector";
 import { convertFileToBase64 } from "~/utils/shared-utils/ConvertIntoBase64Formate";
 import { getDownloadableURL } from "~/utils/shared-utils/convertToDownloadableURL";
 
+import UpgradeBanner from "~/components/drive/index/upgradeBanner";
 import {
   fileUploader,
   getFileByUserId,
 } from "~/utils/shared-utils/fileHandlerController";
+import Dash_Recent_Folders from "~/components/drive/index/Dash_Recent_Folders";
 
 // const formattedData = [
 //   {
@@ -194,16 +196,16 @@ export async function loader({ request }: LoaderFunctionArgs) {
   const user = await requireAuth(request);
 
   if (!user || !user?.id) return Response.redirect("/login");
-
+  console.log("user", user);
   const files = await getFileByUserId(user?.id);
-
+  console.log("files", files);
   const updateFiles = files.data
     ? await Promise.all(
         files?.data?.map(async (file: any) => {
           return {
             ...file,
-            filePath: file.filePath,
             fileUrl: getDownloadableURL(file.filePath),
+            filePath: file.filePath,
             ...(file.thumbnail && {
               thumbnail: getDownloadableURL(file.thumbnail),
             }),
@@ -237,7 +239,7 @@ export default function Index() {
   const actionResult = useActionData<typeof action>();
   const { data, isLoading } = useLoaderData<typeof loader>();
   const { pathname } = useLocation();
-  console.log("actionResult inside index", actionResult);
+  console.log("useLoaderData inside index", data);
   // console.log("isLoading", isLoading);
 
   const isList = useIsListStore((state) => state.isList);
@@ -254,6 +256,7 @@ export default function Index() {
   return (
     <div>
       <ModeToggle />
+
       <DHeader
         pageName="My Drive"
         pathname={pathname}
@@ -294,6 +297,8 @@ export default function Index() {
         }
       />
 
+      <UpgradeBanner />
+      <Dash_Recent_Folders />
       <div
         className={`grid  gap-4 ${
           !isList

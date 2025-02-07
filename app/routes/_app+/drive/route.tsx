@@ -75,7 +75,7 @@ export default function DriveIndex() {
             height={100}
           />
           <img
-            src="/logo-Light.png"
+            src="/logo-light.png"
             alt="Remix Logo"
             className="pt-10 mx-auto dark:hidden"
             width={100}
@@ -167,16 +167,18 @@ export default function DriveIndex() {
                 </NavLink>
               </li>
 
-              <Form method="post" reloadDocument>
-                <button
-                  type="submit"
-                  className="inactive-link  "
-                  name="intent"
-                  value="logout"
-                >
-                  <LogOut size={18} /> Logout
-                </button>
-              </Form>
+              <li>
+                <Form method="post" reloadDocument>
+                  <button
+                    type="submit"
+                    className="inactive-link  "
+                    name="intent"
+                    value="logout"
+                  >
+                    <LogOut size={18} /> Logout
+                  </button>
+                </Form>
+              </li>
             </ul>
           </nav>
         </aside>
