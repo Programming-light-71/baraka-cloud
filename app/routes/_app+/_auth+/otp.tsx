@@ -95,10 +95,10 @@ export async function action({ request }: ActionFunctionArgs) {
 }
 
 const OTP = () => {
-  const [otp, setOtp] = useState(new Array(6).fill(""));
+  const [otp, setOtp] = useState(new Array(6).fill("") || []);
 
   const fetcher = useFetcher<{ success: boolean; message: string }>(); // Remix async form handler
-  const [toastId, setToastId] = useState<string | null>(null); // Store toast ID
+  const [toastId, setToastId] = useState<string>(""); // Store toast ID
 
   const handleSubmit = async (submittedOTP: string) => {
     if (otp.length !== 6) return toast.error("OTP is not complete");
@@ -128,7 +128,7 @@ const OTP = () => {
           id: toastId,
         });
       }
-      setToastId(null); // Reset toast ID after handling response
+      setToastId(""); // Reset toast ID after handling response
     }
   }, [fetcher.state, fetcher.data, toastId]);
 
@@ -168,7 +168,7 @@ const OTP = () => {
           {" "}
           Resend OTP
         </Link>{" "}
-        || If you dont find OTP mail
+        || If you don`t find OTP mail
       </p>
     </div>
   );

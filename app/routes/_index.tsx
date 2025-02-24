@@ -1,6 +1,4 @@
 import type { MetaFunction } from "@remix-run/node";
-import { useNavigate } from "@remix-run/react";
-import { useLayoutEffect } from "react";
 
 export const meta: MetaFunction = () => {
   return [
@@ -10,12 +8,6 @@ export const meta: MetaFunction = () => {
 };
 
 export default function Index() {
-  const navigate = useNavigate();
-  useLayoutEffect(() => {
-    setTimeout(() => {
-      navigate("./drive");
-    }, 2000);
-  }, []);
   return (
     <div className="flex h-screen items-center justify-center bg-black dark:bg-white-900 dark:text-white">
       <div className="flex flex-col items-center gap-16">

@@ -5,13 +5,17 @@ import { useFetcher } from "@remix-run/react";
 import toast from "react-hot-toast";
 
 export function DownloadButton({
-  filePath,
+  fileId,
+  fileReference,
+  accessHash,
   fileName,
   type,
   btn,
   action,
 }: {
-  filePath: string;
+  fileId: string;
+  fileReference: string;
+  accessHash: string;
   fileName: string;
   type: string;
   btn?: ReactNode | string;
@@ -19,7 +23,7 @@ export function DownloadButton({
 }) {
   interface FetcherData {
     type: string;
-    base64File: string;
+    file: string;
     fileName: string;
   }
 
@@ -29,15 +33,15 @@ export function DownloadButton({
     if (fetcher.state === "submitting") {
       toast.loading("Downloading " + fileName);
     }
-
+    console.log("fetcher", fetcher);
     if (fetcher.state === "idle" && fetcher.data) {
       toast.dismiss();
-      if (fetcher.data.base64File) {
+      if (fetcher.data.file) {
         toast.success("Download successful!");
 
         // Trigger file download
         const link = document.createElement("a");
-        link.href = `data:${fetcher.data.type};base64,${fetcher.data.base64File}`;
+        link.href = `data:${fetcher.data.type};base64,${fetcher.data.file}`;
         link.download = fetcher.data.fileName;
         link.click();
       } else {
@@ -49,7 +53,9 @@ export function DownloadButton({
   return (
     <>
       <fetcher.Form method="post" action={action ?? "/drive?index"}>
-        <input type="hidden" name="filePath" value={filePath} />
+        <input type="hidden" name="id" value={fileId} />
+        <input type="hidden" name="fileReference" value={fileReference} />
+        <input type="hidden" name="accessHash" value={accessHash} />
         <input type="hidden" name="fileName" value={fileName} />
         <input type="hidden" name="type" value={type} />
 

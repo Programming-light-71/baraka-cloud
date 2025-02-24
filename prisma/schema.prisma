@@ -56,19 +56,21 @@ model Folder {
 }
 
 model File {
-  id        String    @id @default(uuid())
-  folderId  String?
-  userId    String
-  name      String
-  type      String
-  size      Int?
-  filePath  String
-  duration  Int?
-  thumbnail String?
-  isStarred Boolean   @default(false)
-  isShared  Boolean   @default(false)
-  deletedAt DateTime?
-  createdAt DateTime  @default(now())
+  id            String    @id @default(uuid())
+  folderId      String?
+  userId        String
+  name          String
+  type          String
+  size          String?
+  accessHash    String
+  fileReference String
+  fileId        String
+  duration      Int?
+  thumbnail     String?
+  isStarred     Boolean   @default(false)
+  isShared      Boolean   @default(false)
+  deletedAt     DateTime?
+  createdAt     DateTime  @default(now())
 
   folder     Folder?      @relation(fields: [folderId], references: [id], onDelete: SetNull)
   user       User         @relation(fields: [userId], references: [id], onDelete: Cascade)

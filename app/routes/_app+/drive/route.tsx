@@ -9,6 +9,7 @@ import {
   ChartBarStacked,
   CloudDrizzle,
   FolderLock,
+  Home,
   LayoutList,
   LogOut,
   MonitorUp,
@@ -92,6 +93,16 @@ export default function DriveIndex() {
                       : "inactive-link"
                   }
                   to="/drive"
+                >
+                  <Home size={18} /> Home
+                </NavLink>
+              </li>
+              <li>
+                <NavLink
+                  className={({ isActive }) =>
+                    isActive ? "active-link" : "inactive-link"
+                  }
+                  to="./my-drive"
                 >
                   <CloudDrizzle size={18} /> My Drive
                 </NavLink>
