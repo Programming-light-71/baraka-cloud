@@ -19,10 +19,13 @@ export async function loader({ request }: LoaderFunctionArgs) {
 export default function Index() {
   const { data, success } = useLoaderData<typeof loader>();
 
+  if (!success) {
+    return <Loading />;
+  }
   return (
     <div>
       <DHeader
-        pageName="My Drive"
+        pageName="Images"
         // pathname={pathname}
         // actionData={actionResult}
         isSearch
@@ -30,7 +33,7 @@ export default function Index() {
       />
 
       {success && Array.isArray(data) ? (
-        <Dash_Recent_Files data={data} />
+        <Dash_Recent_Files secName="" secBtnName="My Drive" data={data} />
       ) : (
         <div>Error loading files</div>
       )}

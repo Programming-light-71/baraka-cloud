@@ -43,10 +43,14 @@ if (!storeClient) {
   storeClient = new TelegramClient(SESSION, APP_ID, APP_HASH, {
     connectionRetries: 5,
   });
+
+  storeClient.session.save(); // Save current session
+  // await storeClient.disconnect();
   await storeClient.connect();
+  await storeClient.destroy();
   await storeClient.start({
     botAuthToken: BOT_TOKEN,
-    onError: (err) => console.log(err),
+    onError: (err) => console.log("t error", err),
   });
 }
 

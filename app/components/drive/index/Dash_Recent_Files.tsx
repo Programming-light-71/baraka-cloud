@@ -8,17 +8,19 @@ const Dash_Recent_Files = ({
   data = [],
   secName = "Recent Files",
   secBtnName,
+  secBtnNavigate = "/drive/my-drive",
 }: {
   data: FileType[];
   secName?: string;
   secBtnName?: string;
+  secBtnNavigate?: string;
 }) => {
   const isList = useIsListStore((state) => state.isList);
   return (
     <div className="w-full my-5">
       <Dash_FoldersOrFileSection
         secName={secName}
-        secBtnNavigate="/drive/my-drive"
+        secBtnNavigate={secBtnNavigate}
         secBtnName={secBtnName}
       >
         <div

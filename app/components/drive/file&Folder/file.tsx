@@ -6,6 +6,8 @@ import clsx from "clsx";
 import type { File as FilesType } from "@prisma/client";
 
 import { DownloadButton } from "../DOWNLOAD/DownloadButton";
+import { EllipsisVertical } from "lucide-react";
+import { File3Dot } from "../File3Dot/File3Dot";
 
 interface FileProps {
   file: FilesType;
@@ -33,6 +35,24 @@ const File = ({ file, isList }: FileProps) => {
   const isVideo = type.includes("video");
   const isDocument = type.includes("application");
   const fileIconText = type.split("/")[1];
+
+  const dotMenu = (
+    <File3Dot
+      btn={<EllipsisVertical />}
+      dropDownsData={[
+        <div key={fileId} className="flex items-center gap-2">
+          <DownloadButton
+            btnText="Download"
+            fileId={fileId}
+            fileReference={fileReference}
+            accessHash={accessHash}
+            fileName={name}
+            type={type}
+          />
+        </div>,
+      ]}
+    />
+  );
 
   // Wrapped observer
   useCheckWrapped(containerRef, setIsWrapped, 40);
@@ -95,14 +115,7 @@ const File = ({ file, isList }: FileProps) => {
           </p>
         </div>
       </div>
-
-      <DownloadButton
-        fileId={fileId}
-        fileReference={fileReference}
-        accessHash={accessHash}
-        fileName={name}
-        type={type}
-      />
+      {dotMenu}
     </div>
   );
 };

@@ -53,8 +53,8 @@ export async function action({ request }: ActionFunctionArgs) {
 
 export const meta: MetaFunction = () => {
   return [
-    { title: "New Remix App" },
-    { name: "description", content: "Welcome to Remix!" },
+    { title: "Baraka Cloud" },
+    { name: "description", content: "Welcome to Baraka Cloud !" },
   ];
 };
 

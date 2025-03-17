@@ -1,5 +1,5 @@
 /* eslint-disable react-hooks/exhaustive-deps */
-import { Download } from "lucide-react";
+
 import { ReactNode, useEffect } from "react";
 import { useFetcher } from "@remix-run/react";
 import toast from "react-hot-toast";
@@ -10,7 +10,7 @@ export function DownloadButton({
   accessHash,
   fileName,
   type,
-  btn,
+  btnText,
   action,
 }: {
   fileId: string;
@@ -18,7 +18,7 @@ export function DownloadButton({
   accessHash: string;
   fileName: string;
   type: string;
-  btn?: ReactNode | string;
+  btnText?: ReactNode | string;
   action?: string;
 }) {
   interface FetcherData {
@@ -58,19 +58,15 @@ export function DownloadButton({
         <input type="hidden" name="accessHash" value={accessHash} />
         <input type="hidden" name="fileName" value={fileName} />
         <input type="hidden" name="type" value={type} />
-
-        {btn ? (
-          btn
-        ) : (
-          <button
-            type="submit"
-            title="Download File"
-            name="download"
-            value="download"
-          >
-            <Download />
-          </button>
-        )}
+        <button
+          type="submit"
+          title="Download File"
+          name="download"
+          className="flex gap-2"
+          value="download"
+        >
+          {btnText && btnText}
+        </button>
       </fetcher.Form>
     </>
   );
