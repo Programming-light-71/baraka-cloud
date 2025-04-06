@@ -16,7 +16,8 @@ import {
   Star,
   Trash2,
 } from "lucide-react";
-import { Toaster } from "react-hot-toast";
+import { useEffect } from "react";
+import toast, { Toaster } from "react-hot-toast";
 
 import { requireAuth } from "~/utils/backend-utils/AuthProtector";
 import { destroySessionAndLogout } from "~/utils/backend-utils/CookieManager";
@@ -62,6 +63,10 @@ export default function DriveIndex() {
   const location = useLocation(); // Access the location object
   const pathname = location.pathname;
 
+  useEffect(() => {
+    toast.dismiss();
+    toast.success("Welcome to Baraka Cloud!");
+  }, []);
   return (
     <div className="min-h-screen h-full flex  ">
       {/* Sidebar */}

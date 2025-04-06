@@ -16,7 +16,7 @@ import {
 
 export function File3Dot({
   btn,
-  dropDownsData,
+  dropDownsData = [],
 }: {
   btn: JSX.Element;
   dropDownsData: JSX.Element[] | React.ReactNode[];

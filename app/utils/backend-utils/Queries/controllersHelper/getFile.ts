@@ -1,6 +1,6 @@
 /* eslint-disable no-constant-condition */
 import { Api } from "telegram";
-import { storeClient } from "../../db.server";
+import { db, storeClient } from "../../db.server";
 
 export async function invokeWithRetry(
   method,
@@ -58,47 +58,215 @@ export async function invokeWithRetry(
   );
 }
 
-export async function getFile(fileId, accessHash, fileReference) {
-  console.log("getFile", { fileId, accessHash, fileReference });
-
-  let offset = 0n; // ✅ Using BigInt for offset
-  const chunkSize = 1 * 1024 * 1024; // ✅ 1MB per chunk
-  let fileData = Buffer.alloc(0); // ✅ Initialize empty buffer
-
-  // Validate Base64 fileReference
+export const getFile = async ({ fileId }: { fileId: string }) => {
   try {
-    const fileReferenceBuffer = Buffer.from(fileReference, "base64");
-    if (fileReferenceBuffer.toString("base64") !== fileReference) {
-      throw new Error("Invalid Base64 fileReference");
+    // Validate store client
+    if (!storeClient?.connected) {
+      throw new Error("Telegram client not properly initialized");
     }
-  } catch (error) {
-    throw new Error("Invalid Base64 encoding in fileReference.");
-  }
 
-  while (true) {
-    const result = await invokeWithRetry(Api.upload.GetFile, {
-      location: new Api.InputDocumentFileLocation({
-        id: BigInt(fileId),
-        accessHash: BigInt(accessHash),
-        fileReference: Buffer.from(fileReference, "base64"),
-        thumbSize: "",
-      }),
-      offset,
-      limit: chunkSize,
+    // 1. Retrieve file metadata with transaction
+    const fileData = await db.$transaction(async (tx) => {
+      const data = await tx.file.findUnique({
+        where: { id: fileId },
+        select: {
+          id: true,
+          name: true,
+          type: true,
+          size: true,
+          fileId: true,
+          accessHash: true,
+          dcId: true,
+          fileReference: true,
+          messageId: true,
+          lastUpdatedAt: true,
+        },
+      });
+
+      if (!data) throw new Error("File not found in database");
+      return data;
     });
 
-    if (!result?.bytes) {
-      throw new Error("No file data received.");
-    }
+    // 2. Enhanced file reference converter
+    const getFileReferenceBuffer = (): Buffer => {
+      try {
+        const ref = fileData.fileReference;
 
-    fileData = Buffer.concat([fileData, Buffer.from(result.bytes)]); // ✅ Append chunk data
-    offset += BigInt(chunkSize); // ✅ Move to next chunk
+        // Handle all possible reference formats
+        if (ref instanceof Buffer) return ref;
+        if (ref instanceof Uint8Array) return Buffer.from(ref);
+        if (typeof ref === "string") {
+          // Detect if it's already base64
+          if (/^[A-Za-z0-9+/]+={0,2}$/.test(ref)) {
+            return Buffer.from(ref, "base64");
+          }
+          return Buffer.from(ref);
+        }
+        if (Array.isArray(ref)) return Buffer.from(new Uint8Array(ref));
 
-    if (result.bytes.length < chunkSize) {
-      // ✅ If last chunk is smaller than chunkSize, stop downloading
-      break;
-    }
+        throw new Error(`Unknown reference type: ${typeof ref}`);
+      } catch (error) {
+        console.error("File reference conversion failed:", {
+          error,
+          fileId: fileData.id,
+          referenceType: typeof fileData.fileReference,
+        });
+        throw new Error("File reference format invalid");
+      }
+    };
+
+    // 3. Download executor with enhanced retry logic
+    const downloadExecutor = async (attempt = 1): Promise<Buffer> => {
+      try {
+        const fileReference = getFileReferenceBuffer();
+        const fileSize = parseInt(fileData.size) || 0;
+
+        // Dynamic chunk sizing for optimal performance
+        const chunkSize = Math.min(
+          Math.max(
+            512 * 1024, // Minimum 512KB
+            Math.min(8 * 1024 * 1024, fileSize / 8)
+          ) // Max 8MB or 1/8th of file
+        );
+
+        const location = new Api.InputDocumentFileLocation({
+          id: BigInt(fileData.fileId),
+          accessHash: BigInt(fileData.accessHash),
+          fileReference,
+          thumbSize: "",
+          dcId: fileData.dcId,
+        });
+
+        // Sequential download with progress tracking (more reliable than parallel)
+        let offset = 0;
+        const chunks: Buffer[] = [];
+        const startTime = Date.now();
+
+        while (offset < fileSize) {
+          const chunk = await storeClient.invoke(
+            new Api.upload.GetFile({
+              location,
+              offset,
+              limit: chunkSize,
+            }),
+            { noErrorBox: true } // Prevent Telegram error popups
+          );
+
+          if (!chunk?.bytes?.length) {
+            if (offset === 0) throw new Error("Empty response from server");
+            break; // Reached end of file
+          }
+
+          chunks.push(chunk.bytes);
+          offset += chunk.bytes.length;
+
+          // Progress logging
+          if (Date.now() - startTime > 5000) {
+            // Log every 5 seconds
+            console.log(
+              `Download progress: ${Math.round((offset / fileSize) * 100)}%`
+            );
+          }
+        }
+
+        // Validate downloaded size
+        const totalDownloaded = chunks.reduce(
+          (sum, chunk) => sum + chunk.length,
+          0
+        );
+        if (fileSize > 0 && totalDownloaded < fileSize * 0.9) {
+          throw new Error(
+            `Incomplete download (${totalDownloaded}/${fileSize} bytes)`
+          );
+        }
+
+        return Buffer.concat(chunks);
+      } catch (error) {
+        console.error(`Download attempt ${attempt} failed:`, error);
+
+        // Refresh reference and retry (max 2 retries)
+        if (attempt < 3) {
+          if (fileData.messageId) {
+            await refreshFileReference(fileData);
+            return downloadExecutor(attempt + 1);
+          }
+          throw new Error("Cannot refresh - missing messageId");
+        }
+        throw error;
+      }
+    };
+
+    // 4. Execute download with monitoring
+    const fileBuffer = await downloadExecutor();
+
+    return {
+      success: true,
+      file: fileBuffer,
+      fileName: fileData.name,
+      mimeType: fileData.type,
+      size: fileBuffer.length,
+    };
+  } catch (error: any) {
+    // Enhanced error reporting
+    const errorDetails = {
+      message: error.message,
+      stack: process.env.NODE_ENV === "development" ? error.stack : undefined,
+      fileId,
+      timestamp: new Date().toISOString(),
+    };
+
+    console.error("File download failed:", errorDetails);
+
+    return {
+      success: false,
+      error: "Failed to download file",
+      details: error.message,
+      ...(process.env.NODE_ENV === "development" && { debug: errorDetails }),
+    };
   }
+};
 
-  return fileData;
+// Enhanced reference refresher
+async function refreshFileReference(fileData: any) {
+  try {
+    console.log(`Refreshing reference for file ${fileData.id}...`);
+
+    const result = await storeClient.invoke(
+      new Api.messages.GetMessages({
+        id: [new Api.InputMessageID({ id: parseInt(fileData.messageId) })],
+      }),
+      { noErrorBox: true }
+    );
+
+    const message = result?.messages?.[0];
+    if (!message?.media?.document) {
+      throw new Error("No document found in message");
+    }
+
+    const doc = message.media.document;
+    const newReference = Buffer.from(doc.fileReference);
+
+    await db.$transaction(async (tx) => {
+      await tx.file.update({
+        where: { id: fileData.id },
+        data: {
+          fileReference: newReference,
+          fileId: doc.id.toString(),
+          accessHash: doc.accessHash.toString(),
+          dcId: doc.dcId,
+          lastUpdatedAt: new Date(),
+        },
+      });
+    });
+
+    console.log(`Successfully refreshed reference for ${fileData.id}`);
+    return true;
+  } catch (error) {
+    console.error("Reference refresh failed:", {
+      error: error.message,
+      fileId: fileData.id,
+      messageId: fileData.messageId,
+    });
+    throw new Error("Could not refresh file reference");
+  }
 }

@@ -53,25 +53,25 @@ export const getFilesByUserId = async (
 
     if (!files || files.length === 0) return { error: "No files found." };
 
-    console.log("Files before adding thumbnail:", files);
+    // console.log("Files before adding thumbnail:", files);
 
     const updatedFiles = await Promise.all(
       files.map(async (file) => {
         console.log("Processing file:", file.id, file.type);
 
         if (file.type.startsWith("image")) {
-          const thumbnailBuffer = await getThumbnail(
-            file.fileId,
-            file.accessHash,
-            file.fileReference
-          );
-          console.log(
-            "Image Thumbnail Buffer Length:",
-            thumbnailBuffer?.length
-          );
+          // const thumbnailBuffer = await getThumbnail(
+          //   file.fileId,
+          //   file.accessHash,
+          //   file.fileReference
+          // );
+          // console.log(
+          //   "Image Thumbnail Buffer Length:",
+          //   thumbnailBuffer?.length
+          // );
           return {
             ...file,
-            thumbnail: thumbnailBuffer.toString("base64"),
+            thumbnail: "", //thumbnailBuffer.toString("base64"),
           };
         }
 
@@ -95,7 +95,7 @@ export const getFilesByUserId = async (
       })
     );
 
-    console.log("Files after adding thumbnail:", updatedFiles);
+    // console.log("Files after adding thumbnail:", updatedFiles);
     return updatedFiles;
   } catch (error) {
     console.error("Error in getFilesByUserId:", error);
@@ -103,25 +103,22 @@ export const getFilesByUserId = async (
   }
 };
 
-// fileUploader Function
 export const fileUploader = async ({ file, user_id }: fileUploaderType) => {
   try {
-    if (!chatId) {
-      return { error: "Chat ID is not defined in environment variables" };
-    }
+    if (!chatId)
+      throw new Error("Chat ID not found in the environment variables");
     if (!file) throw new Error("No file provided");
+    if (!storeClient) throw new Error("storeClient is not initialized");
 
-    // Upload file
-    const uploadedFile = await storeClient?.uploadFile({
-      file,
-      workers: 1, // Reduce workers to prevent overload
-    });
+    // **Upload file**
+    const uploadedFile = await storeClient.uploadFile({ file, workers: 1 });
 
-    // Save file in messages (Optional)
-    const result = await storeClient?.invoke(
-      new Api.messages.UploadMedia({
-        peer: chatId, // Upload to your Telegram cloud storage
+    if (!uploadedFile) throw new Error("File upload failed");
 
+    // **Send file as a message**
+    const result = await storeClient.invoke(
+      new Api.messages.SendMedia({
+        peer: chatId,
         media: new Api.InputMediaUploadedDocument({
           file: uploadedFile as any,
           mimeType: file.type,
@@ -129,71 +126,63 @@ export const fileUploader = async ({ file, user_id }: fileUploaderType) => {
             new Api.DocumentAttributeFilename({ fileName: file.name }),
           ],
         }),
+        message: "",
+        randomId: BigInt(Math.floor(Math.random() * 1e18)),
       })
     );
-    console.log("result,result", result);
-    let fileResultToSend;
-    if (result && "document" in result && result.document) {
-      fileResultToSend = {
+
+    console.log("Upload result:", result);
+
+    if (!result?.updates?.length)
+      throw new Error("Failed to retrieve message ID.");
+
+    // **Extract message ID properly**
+    const messageUpdate = result.updates.find(
+      (update) => update.className === "UpdateNewChannelMessage"
+    );
+
+    if (!messageUpdate || !messageUpdate.message || !messageUpdate.message.id) {
+      throw new Error("Message ID not found.");
+    }
+
+    const message = messageUpdate.message;
+    const document = message.media?.document;
+    if (!document) throw new Error("Document not found in message.");
+
+    // **Extract permanent references**
+    const fileId = document.id.toString();
+    const accessHash = document.accessHash.toString();
+    const dcId = document.dcId; // ✅ New: Store required dcId
+    const fileReference = Buffer.from(document.fileReference).toString(
+      "base64"
+    ); // ✅ Store safely
+
+    // **Store file info in DB**
+    const uploadedFileToDb = await db?.file.create({
+      data: {
         name: file.name,
         userId: user_id,
-        fileId: result?.document?.id as unknown as string,
-        type:
-          "mimeType" in result.document
-            ? (result.document?.mimeType as string)
-            : "",
-        ...(result?.video && {
-          thumbnail:
-            "thumbs" in result.document
-              ? JSON.stringify(result.document.thumbs ? true : "")
-              : null,
-          duration:
-            "duration" in result.document
-              ? "attributes" in result.document &&
-                result.document.attributes[0] instanceof
-                  Api.DocumentAttributeVideo
-                ? (result.document.attributes[0]?.duration as
-                    | number
-                    | undefined)
-                : undefined
-              : undefined,
-        }),
-        accessHash:
-          "accessHash" in result.document
-            ? (result.document.accessHash as unknown as string)
-            : "",
-        fileReference:
-          "fileReference" in result.document
-            ? (result.document.fileReference.toString(
-                "base64"
-              ) as unknown as string)
-            : "",
-        size:
-          "size" in result.document
-            ? (result.document.size as unknown as string)
-            : "0",
-      };
-    }
-    console.log(fileResultToSend);
-
-    if (!fileResultToSend) {
-      throw new Error("File result is undefined");
-    }
-
-    const uploadFileToDb = await db?.file.create({
-      data: fileResultToSend,
+        type: file.type,
+        size: file.size.toString(),
+        fileId: document.id.toString(),
+        accessHash: document.accessHash.toString(),
+        dcId: document.dcId,
+        fileReference: Buffer.from(document.fileReference),
+        messageId: messageUpdate.message.id.toString(), // Add this line
+      },
     });
 
     return {
       success: true,
-      message: "File sent successfully!",
-      data: uploadFileToDb,
-      fileResultToSend,
-      result,
+      message: "File uploaded successfully!",
+      data: uploadedFileToDb,
     };
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error in fileUploader:", error);
-    return { error: "Failed to send the file.", details: error };
+    return {
+      error: "Failed to send the file.",
+      details: error.message || error,
+    };
   }
 };
 

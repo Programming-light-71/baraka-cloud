@@ -28,7 +28,6 @@ import { useEffect } from "react";
 import { getFile } from "~/utils/backend-utils/Queries/controllersHelper/getFile";
 import Loading from "~/components/drive/Loading/Loading";
 import toast from "react-hot-toast";
-import { FileUpload } from "~/components/drive/file&Folder/FileUpload";
 
 // action function to handle post methods
 export async function action({ request }: ActionFunctionArgs) {
@@ -122,7 +121,39 @@ export default function Index() {
         pathname={pathname}
         actionData={actionResult}
         isSearch
-        btn={<FileUpload />}
+        btn={
+          <Form
+            method="post"
+            id="upload-form"
+            className="relative"
+            encType="multipart/form-data"
+          >
+            {" "}
+            <input
+              placeholder="Upload"
+              type="file"
+              name="file"
+              id="file"
+              required
+              className="hidden"
+              onChange={(e) => {
+                if (e.target.files?.length) {
+                  const form = document.getElementById(
+                    "upload-form"
+                  ) as HTMLFormElement | null;
+                  form?.submit();
+                }
+              }}
+            />
+            <Button
+              className="bg-purple-700 text-white px-3 py-1 font-medium text-lg"
+              type="button"
+              onClick={() => document.getElementById("file")?.click()}
+            >
+              <CloudUpload /> Upload
+            </Button>
+          </Form>
+        }
       />
 
       {isAppearUpgradeBanner && <UpgradeBanner />}

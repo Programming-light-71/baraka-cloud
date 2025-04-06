@@ -16,6 +16,7 @@ interface FileProps {
 
 const File = ({ file, isList }: FileProps) => {
   const {
+    id,
     name,
     type,
     size,
@@ -42,6 +43,7 @@ const File = ({ file, isList }: FileProps) => {
       dropDownsData={[
         <div key={fileId} className="flex items-center gap-2">
           <DownloadButton
+            id={id}
             btnText="Download"
             fileId={fileId}
             fileReference={fileReference}

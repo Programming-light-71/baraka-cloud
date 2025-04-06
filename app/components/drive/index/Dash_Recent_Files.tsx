@@ -31,9 +31,13 @@ const Dash_Recent_Files = ({
           }`}
         >
           <Suspense fallback={<div>Loading...</div>}>
-            {data?.map((file: FileType, idx: number) => (
-              <File file={file} isList={isList} key={idx + file.id} />
-            ))}
+            {Array.isArray(data) ? (
+              data?.map((file: FileType, idx: number) => (
+                <File file={file} isList={isList} key={idx + file.id} />
+              ))
+            ) : (
+              <p>No files found.</p>
+            )}
           </Suspense>
         </div>
       </Dash_FoldersOrFileSection>
