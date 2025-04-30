@@ -56,24 +56,39 @@ model Folder {
 }
 
 model File {
-  id        String    @id @default(uuid())
-  folderId  String?
-  userId    String
-  name      String
-  type      String
-  size      Int?
-  filePath  String
-  duration  Int?
-  thumbnail String?
-  isStarred Boolean   @default(false)
-  isShared  Boolean   @default(false)
-  deletedAt DateTime?
-  createdAt DateTime  @default(now())
+  id            String    @id @default(uuid())
+  folderId      String?
+  userId        String
+  name          String
+  type          String
+  size          Int // Changed from String to Int for better sorting/filtering
+  accessHash    String
+  dcId          Int
+  fileReference Bytes
+  fileId        String
+  messageId     String? // Crucial for reference refreshes
+  duration      Int?
+  thumbnail     String? // Consider changing to Bytes if storing binary thumbnails
+  isStarred     Boolean   @default(false)
+  isShared      Boolean   @default(false)
+  deletedAt     DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt // Renamed from lastUpdatedAt for consistency
+  expiresAt     DateTime? // New: For automatic cleanup
 
+  // Relations
   folder     Folder?      @relation(fields: [folderId], references: [id], onDelete: SetNull)
   user       User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   trash      Trash[]
   sharedFile SharedFile[]
+
+  // Add indexes for performance
+  @@index([userId])
+  @@index([folderId])
+  @@index([createdAt])
+  @@index([expiresAt])
+  @@index([isStarred])
+  @@index([isShared])
 }
 
 model SharedFile {

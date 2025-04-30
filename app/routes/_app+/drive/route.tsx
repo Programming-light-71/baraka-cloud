@@ -9,13 +9,15 @@ import {
   ChartBarStacked,
   CloudDrizzle,
   FolderLock,
+  Home,
   LayoutList,
   LogOut,
   MonitorUp,
   Star,
   Trash2,
 } from "lucide-react";
-import { Toaster } from "react-hot-toast";
+import { useEffect } from "react";
+import toast, { Toaster } from "react-hot-toast";
 
 import { requireAuth } from "~/utils/backend-utils/AuthProtector";
 import { destroySessionAndLogout } from "~/utils/backend-utils/CookieManager";
@@ -52,8 +54,8 @@ export async function action({ request }: ActionFunctionArgs) {
 
 export const meta: MetaFunction = () => {
   return [
-    { title: "New Remix App" },
-    { name: "description", content: "Welcome to Remix!" },
+    { title: "Baraka Cloud" },
+    { name: "description", content: "Welcome to Baraka Cloud !" },
   ];
 };
 
@@ -61,6 +63,10 @@ export default function DriveIndex() {
   const location = useLocation(); // Access the location object
   const pathname = location.pathname;
 
+  useEffect(() => {
+    toast.dismiss();
+    toast.success("Welcome to Baraka Cloud!");
+  }, []);
   return (
     <div className="min-h-screen h-full flex  ">
       {/* Sidebar */}
@@ -75,7 +81,7 @@ export default function DriveIndex() {
             height={100}
           />
           <img
-            src="/logo-Light.png"
+            src="/logo-light.png"
             alt="Remix Logo"
             className="pt-10 mx-auto dark:hidden"
             width={100}
@@ -92,6 +98,16 @@ export default function DriveIndex() {
                       : "inactive-link"
                   }
                   to="/drive"
+                >
+                  <Home size={18} /> Home
+                </NavLink>
+              </li>
+              <li>
+                <NavLink
+                  className={({ isActive }) =>
+                    isActive ? "active-link" : "inactive-link"
+                  }
+                  to="./my-drive"
                 >
                   <CloudDrizzle size={18} /> My Drive
                 </NavLink>
@@ -167,16 +183,18 @@ export default function DriveIndex() {
                 </NavLink>
               </li>
 
-              <Form method="post" reloadDocument>
-                <button
-                  type="submit"
-                  className="inactive-link  "
-                  name="intent"
-                  value="logout"
-                >
-                  <LogOut size={18} /> Logout
-                </button>
-              </Form>
+              <li>
+                <Form method="post" reloadDocument>
+                  <button
+                    type="submit"
+                    className="inactive-link  "
+                    name="intent"
+                    value="logout"
+                  >
+                    <LogOut size={18} /> Logout
+                  </button>
+                </Form>
+              </li>
             </ul>
           </nav>
         </aside>

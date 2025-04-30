@@ -1,7 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-// app/routes/drive.tsx
 
-import type { File as FileType } from "@prisma/client";
+// external imports
 import { ActionFunctionArgs, LoaderFunctionArgs } from "@remix-run/node";
 import {
   Form,
@@ -9,161 +8,50 @@ import {
   useLoaderData,
   useLocation,
 } from "@remix-run/react";
-import { CloudUpload, Loader } from "lucide-react";
+import { CloudUpload } from "lucide-react";
 
-import { Suspense } from "react";
+// internal imports
 import DHeader from "~/components/drive/dHeader";
-import File from "~/components/drive/file&Folder/file";
-
 import { ModeToggle } from "~/components/theme/ToggleMode";
 import { Button } from "~/components/ui/button";
-import { useIsListStore } from "~/local_store+state/listToggle";
 import { requireAuth } from "~/utils/backend-utils/AuthProtector";
-import { convertFileToBase64 } from "~/utils/shared-utils/ConvertIntoBase64Formate";
-import { getDownloadableURL } from "~/utils/shared-utils/convertToDownloadableURL";
-
+import UpgradeBanner from "~/components/drive/index/upgradeBanner";
+import Dash_Recent_Folders from "~/components/drive/index/Dash_Recent_Folders";
+import Dash_Pined_Folders from "~/components/drive/index/Dash_Pined_FilesOrFolders";
+import Dash_Recent_Files from "~/components/drive/index/Dash_Recent_Files";
 import {
   fileUploader,
-  getFileByUserId,
-} from "~/utils/shared-utils/fileHandlerController";
+  getFilesByUserId,
+} from "~/utils/backend-utils/Queries/controllers/fIle.controller";
+import { useDisappearUpgradeBanner } from "~/local_store+state/Drive/useDisappearUpgradeBanner";
+import { useEffect } from "react";
+import { getFile } from "~/utils/backend-utils/Queries/controllersHelper/getFile";
+import Loading from "~/components/drive/Loading/Loading";
+import toast from "react-hot-toast";
+import { FileUpload } from "~/components/drive/file&Folder/FileUpload";
 
-// const formattedData = [
-//   {
-//     fileName: "publish video - My Workspace 2024-11-07 18-58-20.mp4",
-//     fileUrl: "https://example.com/files/video.mp4",
-//     fileType: "video/mp4",
-//     size: 3201883,
-//     duration: 8,
-//     createdAt: new Date(1737985345 * 1000),
-//     thumbnailUrl: "https://example.com/thumbnails/video-thumb.jpg",
-//   },
-//   {
-//     fileName: "logo.png",
-//     fileUrl: "https://example.com/files/logo.png",
-//     fileType: "image/png",
-//     size: 561556,
-//     createdAt: new Date(1737985479 * 1000),
-//     thumbnailUrl: "https://example.com/thumbnails/logo-thumb.jpg",
-//   },
-//   {
-//     fileName: "benchmark api form.pdf",
-//     fileUrl: "https://example.com/files/document.pdf",
-//     fileType: "application/pdf",
-//     size: 1569579,
-//     createdAt: new Date(1737985546 * 1000),
-//     thumbnailUrl: "https://example.com/thumbnails/document-thumb.jpg",
-//   },
-//   {
-//     fileName: "logo.png",
-//     fileUrl: "https://example.com/files/logo.png",
-//     fileType: "image/png",
-//     size: 561556,
-//     createdAt: new Date(1737985479 * 1000),
-//     thumbnailUrl: "https://example.com/thumbnails/logo-thumb.jpg",
-//   },
-//   {
-//     fileName: "benchmark api form.pdf",
-//     fileUrl: "https://example.com/files/document.pdf",
-//     fileType: "application/pdf",
-//     size: 1569579,
-//     createdAt: new Date(1737985546 * 1000),
-//     thumbnailUrl: "https://example.com/thumbnails/document-thumb.jpg",
-//   },
-//   {
-//     fileName: "logo.png",
-//     fileUrl: "https://example.com/files/logo.png",
-//     fileType: "image/png",
-//     size: 561556,
-//     createdAt: new Date(1737985479 * 1000),
-//     thumbnailUrl: "https://example.com/thumbnails/logo-thumb.jpg",
-//   },
-//   {
-//     fileName: "benchmark api form.pdf",
-//     fileUrl: "https://example.com/files/document.pdf",
-//     fileType: "application/pdf",
-//     size: 1569579,
-//     createdAt: new Date(1737985546 * 1000),
-//     thumbnailUrl: "https://example.com/thumbnails/document-thumb.jpg",
-//   },
-//   {
-//     fileName: "logo.png",
-//     fileUrl: "https://example.com/files/logo.png",
-//     fileType: "image/png",
-//     size: 561556,
-//     createdAt: new Date(1737985479 * 1000),
-//     thumbnailUrl: "https://example.com/thumbnails/logo-thumb.jpg",
-//   },
-//   {
-//     fileName: "benchmark api form.pdf",
-//     fileUrl: "https://example.com/files/document.pdf",
-//     fileType: "application/pdf",
-//     size: 1569579,
-//     createdAt: new Date(1737985546 * 1000),
-//     thumbnailUrl: "https://example.com/thumbnails/document-thumb.jpg",
-//   },
-//   {
-//     fileName: "logo.png",
-//     fileUrl: "https://example.com/files/logo.png",
-//     fileType: "image/png",
-//     size: 561556,
-//     createdAt: new Date(1737985479 * 1000),
-//     thumbnailUrl: "https://example.com/thumbnails/logo-thumb.jpg",
-//   },
-//   {
-//     fileName: "benchmark api form.pdf",
-//     fileUrl: "https://example.com/files/document.pdf",
-//     fileType: "application/pdf",
-//     size: 1569579,
-//     createdAt: new Date(1737985546 * 1000),
-//     thumbnailUrl: "https://example.com/thumbnails/document-thumb.jpg",
-//   },
-//   {
-//     fileName: "logo.png",
-//     fileUrl: "https://example.com/files/logo.png",
-//     fileType: "image/png",
-//     size: 561556,
-//     createdAt: new Date(1737985479 * 1000),
-//     thumbnailUrl: "https://example.com/thumbnails/logo-thumb.jpg",
-//   },
-//   {
-//     fileName: "benchmark api form.pdf",
-//     fileUrl: "https://example.com/files/document.pdf",
-//     fileType: "application/pdf",
-//     size: 1569579,
-//     createdAt: new Date(1737985546 * 1000),
-//     thumbnailUrl: "https://example.com/thumbnails/document-thumb.jpg",
-//   },
-// ];
-
+// action function to handle post methods
 export async function action({ request }: ActionFunctionArgs) {
   try {
     const user = await requireAuth(request);
     const formData = await request.formData();
     const file = formData.get("file");
     const intent = formData.get("download");
-    // console.log("formData", formData);
+    // Download
     if (intent) {
-      console.log("formData", formData);
-      const filePath = formData.get("filePath");
+      const id = formData.get("id");
       const fileName = formData.get("fileName");
       const type = formData.get("type");
-      const base64File = await convertFileToBase64(
-        getDownloadableURL(filePath as string)
-      );
-      console.log("object of download", { base64File, type, fileName });
-      // if (!searchQuery) {
-      return { base64File, type, fileName };
+
+      const downloadableFile = await getFile({ fileId: id as string });
+      console.log("object of download", { downloadableFile, type, fileName });
+      return { file: downloadableFile?.toString("base64"), type, fileName };
     } else {
       if (!file || !(file instanceof globalThis.File)) {
         return new Response(
           JSON.stringify({ error: "No file uploaded or invalid file" }),
           { status: 400 }
         );
-      }
-      if (!user || !user?.id) {
-        return new Response(JSON.stringify({ error: "Unauthorized" }), {
-          status: 400,
-        });
       }
 
       const uploadedData = await fileUploader({
@@ -195,124 +83,54 @@ export async function loader({ request }: LoaderFunctionArgs) {
 
   if (!user || !user?.id) return Response.redirect("/login");
 
-  const files = await getFileByUserId(user?.id);
+  const files = await getFilesByUserId(user?.id, 5, 0);
 
-  const updateFiles = files.data
-    ? await Promise.all(
-        files?.data?.map(async (file: any) => {
-          return {
-            ...file,
-            filePath: file.filePath,
-            fileUrl: getDownloadableURL(file.filePath),
-            ...(file.thumbnail && {
-              thumbnail: getDownloadableURL(file.thumbnail),
-            }),
-          };
-        })
-      )
-    : [];
-
-  return { success: true, data: updateFiles };
+  return { success: true, data: files };
 }
-
-// Helper function to convert a file URL into Base64
-// async function convertFileToBase64(url: string): Promise<string> {
-//   const response = await fetch(url);
-
-//   // Ensure the response is valid
-//   if (!response.ok) {
-//     throw new Error(`Failed to fetch file from URL: ${url}`);
-//   }
-
-//   // Get the response as ArrayBuffer
-//   const arrayBuffer = await response.arrayBuffer();
-
-//   // Convert the ArrayBuffer to Base64
-//   const base64String = Buffer.from(arrayBuffer).toString("base64");
-
-//   return base64String;
-// }
 
 export default function Index() {
   const actionResult = useActionData<typeof action>();
-  const { data, isLoading } = useLoaderData<typeof loader>();
+  const { data = [], isLoading } = useLoaderData<typeof loader>();
+  const { isAppearUpgradeBanner, checkAndResetBanner } =
+    useDisappearUpgradeBanner();
   const { pathname } = useLocation();
-  console.log("actionResult inside index", actionResult);
-  // console.log("isLoading", isLoading);
 
-  const isList = useIsListStore((state) => state.isList);
+  useEffect(() => {
+    toast.success(
+      <pre>
+        <code>{JSON.stringify(actionResult, null, 2)}</code>
+      </pre>
+    );
+  }, [actionResult]);
+  useEffect(() => {
+    checkAndResetBanner();
+    return () => {
+      checkAndResetBanner();
+    };
+  });
 
   if (isLoading) {
-    return (
-      <div className="flex justify-center items-center">
-        <Loader className="animate-spin" size={40} />
-        <p>Loading...</p>
-      </div>
-    );
+    return <Loading />;
   }
 
   return (
     <div>
       <ModeToggle />
+
       <DHeader
         pageName="My Drive"
         pathname={pathname}
         actionData={actionResult}
         isSearch
-        btn={
-          <Form
-            method="post"
-            id="upload-form"
-            className="relative"
-            encType="multipart/form-data"
-          >
-            {" "}
-            <input
-              placeholder="Upload"
-              type="file"
-              name="file"
-              id="file"
-              required
-              className="hidden"
-              onChange={(e) => {
-                if (e.target.files?.length) {
-                  const form = document.getElementById(
-                    "upload-form"
-                  ) as HTMLFormElement | null;
-                  form?.submit();
-                }
-              }}
-            />
-            <Button
-              className="bg-purple-700 text-white px-3 py-1 font-medium text-lg"
-              type="button"
-              onClick={() => document.getElementById("file")?.click()}
-            >
-              <CloudUpload /> Upload
-            </Button>
-          </Form>
-        }
+        btn={<FileUpload />}
       />
 
-      <div
-        className={`grid  gap-4 ${
-          !isList
-            ? "grid-cols-1"
-            : " xl:grid-cols-5 md:grid-cols-3 sm:grid-cols-2"
-        }`}
-      >
-        <Suspense fallback={<div>Loading...</div>}>
-          {data?.map((file: FileType, idx: number) => (
-            <File file={file} isList={isList} key={idx + file.id} />
-          ))}
-        </Suspense>
-      </div>
+      {isAppearUpgradeBanner && <UpgradeBanner />}
+      <Dash_Recent_Folders />
+      <Dash_Pined_Folders />
+      <Dash_Recent_Files data={data} />
 
-      <pre>
-        <code>{JSON.stringify(actionResult, null, 2)}</code>
-      </pre>
-
-      {actionResult && actionResult.success && (
+      {/* {actionResult && actionResult.success && (
         <div>
           <h1>main file</h1>
           <img
@@ -333,7 +151,7 @@ export default function Index() {
             className="max-w-full border rounded"
           />
         </div>
-      )}
+      )} */}
 
       {/* <h1 className="text-2xl font-bold">Drive Index</h1> */}
 

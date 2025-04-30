@@ -3,27 +3,27 @@ import useCheckWrapped from "~/utils/frontend-utils/checkWrapped";
 import { formatFileSize } from "~/utils/shared-utils/FileSizeFormatter";
 import clsx from "clsx";
 
-import type { File } from "@prisma/client";
+import type { File as FilesType } from "@prisma/client";
 
 import { DownloadButton } from "../DOWNLOAD/DownloadButton";
-
-interface FileDetails extends File {
-  fileUrl?: string;
-}
+import { EllipsisVertical } from "lucide-react";
+import { File3Dot } from "../File3Dot/File3Dot";
 
 interface FileProps {
-  file: FileDetails;
+  file: FilesType;
   isList?: boolean;
 }
 
 const File = ({ file, isList }: FileProps) => {
   const {
+    id,
     name,
     type,
     size,
     createdAt,
-    filePath,
-    fileUrl,
+    accessHash,
+    fileReference,
+    fileId,
     thumbnail,
     // duration,
     // isStarred,
@@ -36,6 +36,25 @@ const File = ({ file, isList }: FileProps) => {
   const isVideo = type.includes("video");
   const isDocument = type.includes("application");
   const fileIconText = type.split("/")[1];
+
+  const dotMenu = (
+    <File3Dot
+      btn={<EllipsisVertical />}
+      dropDownsData={[
+        <div key={fileId} className="flex items-center gap-2">
+          <DownloadButton
+            id={id}
+            btnText="Download"
+            fileId={fileId}
+            fileReference={fileReference}
+            accessHash={accessHash}
+            fileName={name}
+            type={type}
+          />
+        </div>,
+      ]}
+    />
+  );
 
   // Wrapped observer
   useCheckWrapped(containerRef, setIsWrapped, 40);
@@ -69,7 +88,7 @@ const File = ({ file, isList }: FileProps) => {
             (type?.startsWith("image") && !type?.includes("svg")) ||
             thumbnail ? (
               <img
-                src={thumbnail || fileUrl}
+                src={`data:${type};base64,${thumbnail}` || "/logo-dark.svg"}
                 alt="Thumbnail"
                 className="h-full w-full object-cover  "
                 height={100}
@@ -91,43 +110,14 @@ const File = ({ file, isList }: FileProps) => {
         <div className="flex flex-col">
           <p className="font-medium truncate max-w-[200px]">{name}</p>
           <p className="text-sm text-gray-600 dark:text-gray-400 group-hover:text-gray-200">
-            {formatFileSize(size as number)}
+            {formatFileSize(Number(size) as number)}
           </p>
           <p className="text-sm text-gray-500 group-hover:text-gray-300">
             {new Date(createdAt).toLocaleDateString()}
           </p>
         </div>
       </div>
-
-      {/* Download Button */}
-      {/* <a
-        title={name}
-        href={filePath}
-        type="download"
-        download={"baraka-cloud" + name}
-        className="p-2 rounded-md bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600"
-      >
-        <Download size={20} />
-      </a> */}
-
-      {/* <a
-        href={`data:${type};base64,${filePath}`}
-        download={name}
-        className="text-blue-600 underline"
-      >
-        Download File
-      </a> */}
-
-      <DownloadButton filePath={filePath} fileName={name} type={type} />
-      {/* <FileDownload /> */}
-      {/* <button
-        onClick={() => handleDownloadFile(filePath, name)}
-        type="button"
-        title="sd"
-        className="p-2 rounded-md bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600"
-      >
-        <Download size={20} />
-      </button> */}
+      {dotMenu}
     </div>
   );
 };
