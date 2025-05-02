@@ -19,13 +19,29 @@ export default defineConfig({
         v3_singleFetch: true,
         v3_lazyRouteDiscovery: true,
       },
-
       routes(defineRoutes) {
         return flatRoutes("routes", defineRoutes, {
-          ignoredRouteFiles: ["**/.*"], // Ignore dot files (like .DS_Store)
+          ignoredRouteFiles: ["**/.*"],
         });
       },
     }),
     tsconfigPaths(),
   ],
+  build: {
+    target: 'esnext',
+    minify: true,
+    rollupOptions: {
+      output: {
+        format: 'esm',
+        manualChunks: undefined
+      }
+    },
+    sourcemap: true,
+    ssr: {
+      noExternal: true
+    }
+  },
+  server: {
+    hmr: true
+  }
 });

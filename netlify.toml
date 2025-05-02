@@ -1,0 +1,15 @@
+[build]
+  command = "npm run build"
+  publish = "build/client"
+  functions = "build/server"
+
+[dev]
+  command = "npm run dev"
+
+[[redirects]]
+  from = "/*"
+  to = "/.netlify/functions/server"
+  status = 200
+
+[functions]
+  external_node_modules = ["@remix-run/server-runtime"]
