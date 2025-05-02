@@ -95,7 +95,7 @@ export async function action({ request }: ActionFunctionArgs) {
 }
 
 const OTP = () => {
-  const [otp, setOtp] = useState(new Array(6).fill("") || []);
+  const [otp, setOtp] = useState(["", "", "", "", "", ""]);
 
   const fetcher = useFetcher<{ success: boolean; message: string }>(); // Remix async form handler
   const [toastId, setToastId] = useState<string>(""); // Store toast ID
