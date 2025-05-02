@@ -1,27 +1,27 @@
+// init.ts or main.ts
+
 import { PrismaClient } from "@prisma/client";
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 import { TelegramClient } from "telegram";
 import { StringSession } from "telegram/sessions";
-import type { NewMessageEvent } from "telegram/events";
+import { Logger } from "telegram/extensions/Logger";
 
-// Initialize Prisma client
-let db: PrismaClient;
-if (!globalThis.db) {
-  globalThis.db = new PrismaClient();
-  await globalThis.db.$connect();
-}
-db = globalThis.db;
+Logger.setLevel("none");
 
 // Fix __dirname in ES Module
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const sessionFilePath = path.join(__dirname, "session.json");
 
-// Telegram client initialization
-let storeClient: TelegramClient;
+// Prisma setup
+if (!globalThis.db) {
+  globalThis.db = new PrismaClient();
+  await globalThis.db.$connect();
+}
 
+// Telegram setup
 if (!globalThis.storeClient) {
   const APP_ID = parseInt(process.env.Tel_APP_ID || "");
   const APP_HASH = process.env.Tel_APP_HASH || "";
@@ -43,17 +43,15 @@ if (!globalThis.storeClient) {
   try {
     await globalThis.storeClient.connect();
 
-    // Verify connection
     if (!globalThis.storeClient.connected) {
       throw new Error("Failed to connect to Telegram");
     }
 
-    // If using bot token
     if (BOT_TOKEN && !SESSION_STRING) {
       await globalThis.storeClient.start({
         botAuthToken: BOT_TOKEN,
       });
-      // Save new session
+
       const newSession = globalThis.storeClient.session.save();
       fs.writeFileSync(sessionFilePath, newSession);
     }
@@ -65,6 +63,5 @@ if (!globalThis.storeClient) {
   }
 }
 
-storeClient = globalThis.storeClient;
-
-export { db, storeClient };
+export const db = globalThis.db;
+export const storeClient = globalThis.storeClient;

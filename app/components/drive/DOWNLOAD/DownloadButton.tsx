@@ -1,6 +1,6 @@
-import { ReactNode, useEffect } from "react";
-import { useFetcher } from "@remix-run/react";
+import { ReactNode } from "react";
 import toast from "react-hot-toast";
+import { downloadTelegramFile } from "~/utils/backend-utils/downloadTelegramFile"; // We'll define this
 
 export function DownloadButton({
   id,
@@ -10,54 +10,54 @@ export function DownloadButton({
   fileName,
   type,
   btnText,
+  dcId = 5, // optional
 }: {
   id: string;
   fileId: string;
-  fileReference: string;
+  fileReference: string; // JSON stringified version
   accessHash: string;
   fileName: string;
   type: string;
   btnText?: ReactNode | string;
+  dcId?: number;
 }) {
-  interface FetcherData {
-    type: string;
-    file: string;
-    fileName: string;
-  }
+  console.log("DownloadButton Props:", {
+    id,
+    fileId,
+    fileReference,
+    accessHash,
+    fileName,
+    type,
+    btnText,
+    dcId,
+  });
+  const handleDownload = async () => {
+    try {
+      toast.loading(`Downloading ${fileName}...`);
+      await downloadTelegramFile({
+        fileId,
+        accessHash,
+        dcId,
+        fileName,
+        fileReference: JSON.parse(fileReference), // must be an object
+      });
 
-  const fetcher = useFetcher<FetcherData>();
-
-  useEffect(() => {
-    if (fetcher.state === "submitting") {
-      toast.loading("Downloading " + fileName);
-    }
-
-    if (fetcher.state === "idle" && fetcher.data) {
       toast.dismiss();
-      if (fetcher.data.file) {
-        toast.success("Download successful!");
-
-        // Trigger file download
-        const link = document.createElement("a");
-        link.href = `data:${fetcher.data.type};base64,${fetcher.data.file}`;
-        link.download = fetcher.data.fileName;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-      } else {
-        toast.error("Download failed!");
-      }
+      toast.success("Download successful!");
+    } catch (err) {
+      toast.dismiss();
+      toast.error("Download failed!");
+      console.error(err);
     }
-  }, [fetcher.state, fetcher.data]);
+  };
 
   return (
-    <fetcher.Form method="get" action={`/api/download/${fileId}`}>
-      <input type="hidden" name="id" value={id} />
-      <input type="hidden" name="fileReference" value={fileReference} />
-      <input type="hidden" name="accessHash" value={accessHash} />
-      <button type="submit" title="Download File" className="flex gap-2">
-        {btnText || "Download"}
-      </button>
-    </fetcher.Form>
+    <button
+      onClick={() => handleDownload}
+      title="Download File"
+      className="flex gap-2"
+    >
+      {btnText || "Download"}
+    </button>
   );
 }
