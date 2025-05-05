@@ -1,8 +1,9 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { storeClient } from "../../db.server";
+import { Api } from "telegram";
+import { telegram } from "../../../../services/telegram.server";
 
 export async function invokeWithRetry(
-  method: new (arg0: any) => any,
+  method: any,
   params: any,
   maxRetries = 5,
   delay = 5000
@@ -10,23 +11,41 @@ export async function invokeWithRetry(
   let attempt = 0;
   while (attempt < maxRetries) {
     try {
-      return await storeClient?.invoke(new method(params));
+      return await telegram?.invoke(new method(params));
     } catch (error) {
+      const errorMsg = error.message.toUpperCase();
+
+      // Handle FLOOD_WAIT_X
+      const floodWaitMatch = errorMsg.match(/FLOOD_WAIT_(\d+)/);
+      if (floodWaitMatch) {
+        const waitTime = parseInt(floodWaitMatch[1], 10);
+        console.warn(
+          `Rate limited! Waiting ${waitTime} seconds before retrying...`
+        );
+        await new Promise((res) => setTimeout(res, waitTime * 1000));
+        attempt++;
+        continue;
+      }
+
+      // Handle other errors...
       if (
-        error.message.includes("TIMEOUT") ||
-        error.message.includes("Not connected")
+        errorMsg.includes("TIMEOUT") ||
+        errorMsg.includes("NOT CONNECTED") ||
+        errorMsg.includes("RPC_CALL_FAIL")
       ) {
         console.warn(
           `Attempt ${attempt + 1}/${maxRetries} failed. Retrying in ${
             delay / 1000
           } seconds...`
         );
-        await new Promise((res) => setTimeout(res, delay)); // Wait before retrying
+        await new Promise((res) => setTimeout(res, delay));
         attempt++;
       } else {
-        throw error; // If error is not a timeout, throw it
+        throw error; // If error is not retryable, throw it immediately
       }
     }
   }
-  throw new Error("Max retry attempts reached.");
+  throw new Error(
+    `Max retry attempts (${maxRetries}) reached for ${method.name}`
+  );
 }
