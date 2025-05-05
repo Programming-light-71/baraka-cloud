@@ -1,6 +1,8 @@
 /* eslint-disable no-constant-condition */
 import { Api } from "telegram";
-import { db, storeClient } from "../../db.server";
+import { db } from "../../db.server";
+import { telegram } from "../../../../services/telegram.server";
+import { invokeWithRetry } from "./invokeWithRetry";
 
 export async function invokeWithRetry(
   method,
@@ -11,7 +13,7 @@ export async function invokeWithRetry(
   let attempt = 0;
   while (attempt < maxRetries) {
     try {
-      return await storeClient?.invoke(new method(params));
+      return await telegram?.invoke(new method(params));
     } catch (error) {
       const errorMsg = error.message.toUpperCase();
 
@@ -30,8 +32,8 @@ export async function invokeWithRetry(
       // Handle AUTH_KEY_UNREGISTERED (session expired)
       if (errorMsg.includes("AUTH_KEY_UNREGISTERED")) {
         console.error("Session expired! Reauthenticating...");
-        await storeClient.destroy();
-        await storeClient.start(); // Re-authenticate
+        await telegram.destroy();
+        await telegram.start(); // Re-authenticate
         continue;
       }
 
@@ -58,10 +60,31 @@ export async function invokeWithRetry(
   );
 }
 
-export const getFile = async ({ fileId }: { fileId: string }) => {
+export async function getFile(method: any, params: any) {
   try {
+    if (!telegram?.connected) {
+      throw new Error("Telegram client is not connected");
+    }
+    return await telegram?.invoke(new method(params));
+  } catch (error: any) {
+    if (error.message.includes("AUTH_KEY_UNREGISTERED")) {
+      // Attempt to reconnect
+      await telegram.destroy();
+      await telegram.start(); // Re-authenticate
+      return await invokeWithRetry(method, params);
+    }
+    throw error;
+  }
+}
+
+export async function getFileById(fileId: string, userId: string) {
+  try {
+    if (!telegram?.connected) {
+      throw new Error("Telegram client is not connected");
+    }
+
     // Validate store client
-    if (!storeClient?.connected) {
+    if (!telegram?.connected) {
       throw new Error("Telegram client not properly initialized");
     }
 
@@ -143,7 +166,7 @@ export const getFile = async ({ fileId }: { fileId: string }) => {
         const startTime = Date.now();
 
         while (offset < fileSize) {
-          const chunk = await storeClient.invoke(
+          const chunk = await telegram.invoke(
             new Api.upload.GetFile({
               location,
               offset,
@@ -224,14 +247,14 @@ export const getFile = async ({ fileId }: { fileId: string }) => {
       ...(process.env.NODE_ENV === "development" && { debug: errorDetails }),
     };
   }
-};
+}
 
 // Enhanced reference refresher
 async function refreshFileReference(fileData: any) {
   try {
     console.log(`Refreshing reference for file ${fileData.id}...`);
 
-    const result = await storeClient.invoke(
+    const result = await telegram.invoke(
       new Api.messages.GetMessages({
         id: [new Api.InputMessageID({ id: parseInt(fileData.messageId) })],
       }),

@@ -1,8 +1,9 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { db, storeClient } from "../../db.server";
 import { Api } from "telegram";
-import { getThumbnail } from "../controllersHelper/getThumbnail";
+import { db } from "../../db.server";
+import { telegram } from "../../../../services/telegram.server";
 import { getFile } from "../controllersHelper/getFile";
+import { getThumbnail } from "../controllersHelper/getThumbnail";
 
 // types
 interface fileUploaderType {
@@ -103,40 +104,31 @@ export const getFilesByUserId = async (
   }
 };
 
-export const fileUploader = async ({ file, user_id }: fileUploaderType) => {
+export async function uploadFileToTelegram(file: any) {
   try {
-    if (!chatId)
-      throw new Error("Chat ID not found in the environment variables");
-    if (!file) throw new Error("No file provided");
-    if (!storeClient) throw new Error("storeClient is not initialized");
+    if (!telegram) throw new Error("Telegram client is not initialized");
 
-    // **Upload file**
-    const uploadedFile = await storeClient.uploadFile({ file, workers: 1 });
+    const uploadedFile = await telegram.uploadFile({ file, workers: 1 });
 
-    if (!uploadedFile) throw new Error("File upload failed");
-
-    // **Send file as a message**
-    const result = await storeClient.invoke(
+    const result = await telegram.invoke(
       new Api.messages.SendMedia({
-        peer: chatId,
+        peer: process.env.TELEGRAM_STORAGE_CHAT_ID,
         media: new Api.InputMediaUploadedDocument({
-          file: uploadedFile as any,
+          file: uploadedFile,
           mimeType: file.type,
           attributes: [
             new Api.DocumentAttributeFilename({ fileName: file.name }),
           ],
+          forceFile: true,
         }),
-        message: "",
+        message: `Uploaded ${file.name}`,
         randomId: BigInt(Math.floor(Math.random() * 1e18)),
       })
     );
 
-    console.log("Upload result:", result);
-
     if (!result?.updates?.length)
       throw new Error("Failed to retrieve message ID.");
 
-    // **Extract message ID properly**
     const messageUpdate = result.updates.find(
       (update) => update.className === "UpdateNewChannelMessage"
     );
@@ -149,26 +141,44 @@ export const fileUploader = async ({ file, user_id }: fileUploaderType) => {
     const document = message.media?.document;
     if (!document) throw new Error("Document not found in message.");
 
-    // **Extract permanent references**
     const fileId = document.id.toString();
     const accessHash = document.accessHash.toString();
-    const dcId = document.dcId; // ✅ New: Store required dcId
+    const dcId = document.dcId;
     const fileReference = Buffer.from(document.fileReference).toString(
       "base64"
-    ); // ✅ Store safely
+    );
 
-    // **Store file info in DB**
+    return {
+      fileId,
+      accessHash,
+      dcId,
+      fileReference,
+      messageId: messageUpdate.message.id.toString(),
+    };
+  } catch (error: any) {
+    console.error("Error in uploadFileToTelegram:", error);
+    throw new Error(error.message || "Failed to upload file to Telegram");
+  }
+}
+
+export const fileUploader = async ({ file, user_id }: fileUploaderType) => {
+  try {
+    if (!file) throw new Error("No file provided");
+
+    const { fileId, accessHash, dcId, fileReference, messageId } =
+      await uploadFileToTelegram(file);
+
     const uploadedFileToDb = await db?.file.create({
       data: {
         name: file.name,
         userId: user_id,
         type: file.type,
         size: file.size.toString(),
-        fileId: document.id.toString(),
-        accessHash: document.accessHash.toString(),
-        dcId: document.dcId,
-        fileReference: Buffer.from(document.fileReference),
-        messageId: messageUpdate.message.id.toString(), // Add this line
+        fileId,
+        accessHash,
+        dcId,
+        fileReference: Buffer.from(fileReference),
+        messageId,
       },
     });
 

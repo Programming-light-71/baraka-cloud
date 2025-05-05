@@ -1,7 +1,6 @@
 // utils/downloadTelegramFile.ts
 import { Api } from "telegram";
-import { storeClient } from "./db.server";
-// assumes setup from previous message
+import { telegram } from "../../services/telegram.server";
 
 export async function downloadTelegramFile({
   fileId,
@@ -16,32 +15,37 @@ export async function downloadTelegramFile({
   dcId: number;
   fileName: string;
 }) {
-  const client = await storeClient();
+  try {
+    const inputFileLocation = new Api.InputDocumentFileLocation({
+      id: fileId,
+      accessHash,
+      fileReference: Buffer.from(Object.values(fileReference)),
+      thumbSize: "",
+    });
 
-  const referenceBuffer = Buffer.from(Object.values(fileReference));
+    const file = await telegram.downloadFile(dcId, {
+      location: inputFileLocation,
+      dcId,
+      fileSize: 0,
+      workers: 1,
+    });
 
-  const inputDocument = new Api.InputDocumentFileLocation({
-    id: BigInt(fileId),
-    accessHash: BigInt(accessHash),
-    fileReference: referenceBuffer,
-    thumbSize: "",
-  });
+    // Create a download URL for the file
+    const blob = new Blob([file]);
+    const url = URL.createObjectURL(blob);
 
-  const buffer = await client.downloadFile(inputDocument, {
-    dcId,
-    fileSize: 0,
-    progressCallback: (progress) => {
-      console.log(`Download Progress: ${(progress * 100).toFixed(2)}%`);
-    },
-  });
+    // Create a link element and trigger download
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = fileName;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
 
-  const blob = new Blob([buffer], { type: "application/octet-stream" });
-  const url = URL.createObjectURL(blob);
-
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = fileName;
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
+    // Clean up the URL object
+    URL.revokeObjectURL(url);
+  } catch (error) {
+    console.error("Error downloading file:", error);
+    throw error;
+  }
 }
