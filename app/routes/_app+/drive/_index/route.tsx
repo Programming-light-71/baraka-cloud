@@ -21,6 +21,9 @@ import {
 import { getFile } from "~/utils/backend-utils/Queries/controllersHelper/getFile";
 import { useDisappearUpgradeBanner } from "~/local_store+state/Drive/useDisappearUpgradeBanner";
 import { FileUpload } from "~/components/drive/file&Folder/FileUpload";
+import { telegram } from "~/services/telegram.server";
+import { PassThrough } from "stream";
+import { Api } from "telegram";
 
 export async function action({ request }: ActionFunctionArgs) {
   try {
@@ -30,14 +33,39 @@ export async function action({ request }: ActionFunctionArgs) {
     const intent = formData.get("download");
 
     if (intent) {
-      const id = formData.get("id");
-      const fileName = formData.get("fileName");
-      const type = formData.get("type");
+      const id = formData.get("fileId") as string;
+      const accessHash = BigInt(formData.get("accessHash") as string);
+      const fileReferenceBase64 = formData.get("fileReference") as string;
+      const fileName = formData.get("fileName") as string;
 
-      const downloadableFile = await getFile({ fileId: id as string });
-      return { file: downloadableFile?.toString("base64"), type, fileName };
+      const fileId = BigInt(id);
+      const fileReference = Buffer.from(fileReferenceBase64, "base64");
+
+      const client = telegram;
+
+      const inputDocument = new Api.InputDocument({
+        id: fileId,
+        accessHash,
+        fileReference,
+      });
+
+      const stream = new PassThrough();
+
+      await client.downloadMedia(inputDocument, {
+        file: stream,
+      });
+
+      return new Response(stream as any, {
+        headers: {
+          "Content-Type": "application/octet-stream",
+          "Content-Disposition": `attachment; filename="${encodeURIComponent(
+            fileName
+          )}"`,
+        },
+      });
     }
 
+    // ✅ Move this block inside the try
     if (!file || !(file instanceof globalThis.File)) {
       return new Response(
         JSON.stringify({ error: "No file uploaded or invalid file" }),

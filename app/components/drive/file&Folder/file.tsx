@@ -2,7 +2,7 @@ import { useRef, useState } from "react";
 import useCheckWrapped from "~/utils/frontend-utils/checkWrapped";
 import { formatFileSize } from "~/utils/shared-utils/FileSizeFormatter";
 import clsx from "clsx";
-
+import { useFetcher } from "@remix-run/react";
 import type { File as FilesType } from "@prisma/client";
 import { EllipsisVertical } from "lucide-react";
 import toast from "react-hot-toast";
@@ -27,7 +27,7 @@ const File = ({ file, isList }: FileProps) => {
     fileId,
     fileReference,
   } = file;
-
+  const fetcher = useFetcher();
   const containerRef = useRef<HTMLDivElement>(null);
   const [isWrapped, setIsWrapped] = useState(false);
 
@@ -35,69 +35,42 @@ const File = ({ file, isList }: FileProps) => {
   const isVideo = type.includes("video");
   const isDocument = type.includes("application");
   const fileIconText = type.split("/")[1];
+
   const dotMenu = (
     <File3Dot
       btn={<EllipsisVertical />}
       dropDownsData={[
         <div key={fileId} className="flex items-center gap-2">
-          {/* <DownloadButton
-            id={id}
-            btnText="Download"
-            fileId={fileId}
-            fileReference={JSON.stringify(fileReference)} // 🔁 MUST be stringified
-            accessHash={accessHash}
-            fileName={name}
-            type={type}
-          /> */}
-          <button
-            onClick={async () => {
-              toast.loading(`Downloading ${name}...`);
-              // Call your download function here
-              // ------------------------
-
-              const referenceBuffer = Buffer.from(Object.values(fileReference));
-              const base64Ref = referenceBuffer.toString("base64");
-
-              const downloadUrl = `/api/downloadFile?fileId=${fileId}&accessHash=${accessHash}&dcId=${dcId}&fileName=${name}&fileReference=${base64Ref}`;
-
-              try {
-                const response = await fetch(downloadUrl);
-
-                if (!response.ok) {
-                  throw new Error("Download failed");
-                }
-
-                const blob = await response.blob();
-
-                const url = URL.createObjectURL(blob);
-                const link = document.createElement("a");
-                link.href = url;
-                link.download = name;
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-                URL.revokeObjectURL(url); // Clean up
-              } catch (err) {
-                console.error("Error downloading file:", err);
-              }
-
-              // --------------------------
-
-              toast.dismiss();
-              toast.success("Download successful!");
-            }}
-            className="flex gap-2"
-            title="Download File"
-          >
-            <span className="text-sm">Download</span>
-            <img
-              src="/logo-dark.svg"
-              alt="Download"
-              className="h-4 w-4 object-cover"
-              height={16}
-              width={16}
+          <fetcher.Form method="post" action="/drive?index">
+            <input type="hidden" name="intent" value={"download"} />
+            <input type="hidden" name="fileId" value={fileId} />
+            <input
+              type="hidden"
+              name="accessHash"
+              value={accessHash.toString()}
             />
-          </button>
+            <input
+              type="hidden"
+              name="fileReference"
+              value={btoa(String.fromCharCode(...Object.values(fileReference)))}
+            />
+            <input type="hidden" name="type" value={type} />
+            <input type="hidden" name="fileName" value={name} />
+            <button
+              type="submit"
+              className="flex gap-2 items-center"
+              title="Download File"
+            >
+              <span className="text-sm">Download</span>
+              <img
+                src="/logo-dark.svg"
+                alt="Download"
+                className="h-4 w-4 object-cover"
+                height={16}
+                width={16}
+              />
+            </button>
+          </fetcher.Form>
         </div>,
       ]}
     />
