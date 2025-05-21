@@ -11,13 +11,10 @@ export const action: ActionFunction = async ({ request }) => {
   }
 
   try {
-    // Fetch and convert the file to Base64
-    const base64File = await convertFileToBase64(fileUrl);
-
     return json(
       {
         fileName,
-        base64File,
+        fileUrl,
         type,
       },
       { status: 200 }
@@ -29,14 +26,3 @@ export const action: ActionFunction = async ({ request }) => {
     );
   }
 };
-
-async function convertFileToBase64(url: string): Promise<string> {
-  const response = await fetch(url);
-
-  if (!response.ok) {
-    throw new Error(`Failed to fetch the file from ${url}`);
-  }
-
-  const arrayBuffer = await response.arrayBuffer();
-  return Buffer.from(arrayBuffer).toString("base64");
-}

@@ -1,13 +1,12 @@
 import { useRef, useState } from "react";
+import { Buffer } from "buffer";
 import useCheckWrapped from "~/utils/frontend-utils/checkWrapped";
 import { formatFileSize } from "~/utils/shared-utils/FileSizeFormatter";
 import clsx from "clsx";
-import { useFetcher } from "@remix-run/react";
 import type { File as FilesType } from "@prisma/client";
 import { EllipsisVertical } from "lucide-react";
-import toast from "react-hot-toast";
 import { File3Dot } from "../File3Dot/File3Dot";
-// import { DownloadButton } from "../DOWNLOAD/DownloadButton";
+import { DownloadButton } from "../DOWNLOAD/DownloadButton";
 
 interface FileProps {
   file: FilesType;
@@ -23,11 +22,9 @@ const File = ({ file, isList }: FileProps) => {
     createdAt,
     thumbnail,
     accessHash,
-    dcId,
-    fileId,
     fileReference,
   } = file;
-  const fetcher = useFetcher();
+
   const containerRef = useRef<HTMLDivElement>(null);
   const [isWrapped, setIsWrapped] = useState(false);
 
@@ -36,47 +33,36 @@ const File = ({ file, isList }: FileProps) => {
   const isDocument = type.includes("application");
   const fileIconText = type.split("/")[1];
 
-  const dotMenu = (
-    <File3Dot
-      btn={<EllipsisVertical />}
-      dropDownsData={[
-        <div key={fileId} className="flex items-center gap-2">
-          <fetcher.Form method="post" action="/drive?index">
-            <input type="hidden" name="intent" value={"download"} />
-            <input type="hidden" name="fileId" value={fileId} />
-            <input
-              type="hidden"
-              name="accessHash"
-              value={accessHash.toString()}
-            />
-            <input
-              type="hidden"
-              name="fileReference"
-              value={btoa(String.fromCharCode(...Object.values(fileReference)))}
-            />
-            <input type="hidden" name="type" value={type} />
-            <input type="hidden" name="fileName" value={name} />
-            <button
-              type="submit"
-              className="flex gap-2 items-center"
-              title="Download File"
-            >
-              <span className="text-sm">Download</span>
-              <img
-                src="/logo-dark.svg"
-                alt="Download"
-                className="h-4 w-4 object-cover"
-                height={16}
-                width={16}
-              />
-            </button>
-          </fetcher.Form>
-        </div>,
-      ]}
-    />
-  );
+  const dotMenu = <File3Dot btn={<EllipsisVertical />} dropDownsData={[]} />;
 
   useCheckWrapped(containerRef, setIsWrapped, 40);
+
+  // Helper function to safely handle the base64 conversion
+  const toBase64 = (input: string | Buffer | ArrayBuffer | Uint8Array) => {
+    if (input instanceof Buffer) {
+      return input.toString("base64");
+    }
+    if (input instanceof Uint8Array) {
+      return Buffer.from(input).toString("base64");
+    }
+    if (typeof input === "string") {
+      return Buffer.from(input).toString("base64");
+    }
+    return ""; // Return an empty string if the input type is invalid
+  };
+
+  const getThumbnailSrc = () => {
+    // Only render the image if it's a valid image or we have a valid thumbnail
+    if (
+      (isList || isWrapped) &&
+      ((type?.startsWith("image") && !type?.includes("svg")) || thumbnail)
+    ) {
+      return thumbnail
+        ? `data:${type};base64,${toBase64(thumbnail)}`
+        : "/logo-dark.svg";
+    }
+    return undefined;
+  };
 
   return (
     <div
@@ -102,11 +88,9 @@ const File = ({ file, isList }: FileProps) => {
               : "bg-gray-300"
           )}
         >
-          {(isList || isWrapped) &&
-          ((type?.startsWith("image") && !type?.includes("svg")) ||
-            thumbnail) ? (
+          {getThumbnailSrc() ? (
             <img
-              src={`data:${type};base64,${thumbnail}` || "/logo-dark.svg"}
+              src={getThumbnailSrc()}
               alt="Thumbnail"
               className="h-full w-full object-cover"
               height={100}
@@ -130,7 +114,19 @@ const File = ({ file, isList }: FileProps) => {
         </div>
       </div>
 
-      <div className="absolute right-0 bottom-2 group-hover:opacity-100 opacity-0 transition-all duration-150">
+      <div className="absolute right-0 bottom-2 group-hover:opacity-100 opacity-0 transition-all duration-150 flex items-center">
+        <DownloadButton
+          id={id}
+          fileReference={
+            fileReference
+              ? typeof fileReference === "string"
+                ? fileReference
+                : Buffer.from(fileReference).toString("base64")
+              : ""
+          }
+          accessHash={accessHash}
+          fileName={name}
+        />
         {dotMenu}
       </div>
     </div>

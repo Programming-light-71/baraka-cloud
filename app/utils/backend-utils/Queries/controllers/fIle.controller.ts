@@ -2,7 +2,6 @@
 import { Api } from "telegram";
 import { db } from "../../db.server";
 import { telegram } from "../../../../services/telegram.server";
-import { getFile } from "../controllersHelper/getFile";
 import { getThumbnail } from "../controllersHelper/getThumbnail";
 
 // types
@@ -10,10 +9,6 @@ interface fileUploaderType {
   file: File;
   user_id: string;
 }
-
-// env variables
-// chat Id
-const chatId = process.env.chat_id;
 
 /*====================================================
 =|| ///////////////////////////_ Functions >>> utils _///////////////////////////////// ||=
@@ -46,33 +41,46 @@ export const getFilesByUserId = async (
   filter?: object
 ) => {
   try {
-    const files = await db?.file.findMany({
+    const files = (await db?.file.findMany({
       where: { userId: user_id, ...filter },
+      select: {
+        id: true,
+        name: true,
+        userId: true,
+        type: true,
+        size: true,
+        fileId: true,
+        accessHash: true,
+        dcId: true,
+        fileReference: true,
+        messageId: true,
+        createdAt: true,
+        updatedAt: true,
+      },
       ...(take && { take }),
       ...(skip && { skip: skip || 0 }),
-    });
+    })) as any;
 
-    if (!files || files.length === 0) return { error: "No files found." };
+    if (!files || files.length === 0) {
+      return { error: "No files found." };
+    }
 
     // console.log("Files before adding thumbnail:", files);
 
     const updatedFiles = await Promise.all(
       files.map(async (file) => {
+        // Decode fileReference from base64
+        const decodedFileReference = file.fileReference
+          ? Buffer.from(file.fileReference, "base64").toString("utf-8")
+          : "";
+
         console.log("Processing file:", file.id, file.type);
 
         if (file.type.startsWith("image")) {
-          // const thumbnailBuffer = await getThumbnail(
-          //   file.fileId,
-          //   file.accessHash,
-          //   file.fileReference
-          // );
-          // console.log(
-          //   "Image Thumbnail Buffer Length:",
-          //   thumbnailBuffer?.length
-          // );
           return {
             ...file,
-            thumbnail: "", //thumbnailBuffer.toString("base64"),
+            fileReference: decodedFileReference,
+            thumbnail: "",
           };
         }
 
@@ -80,7 +88,8 @@ export const getFilesByUserId = async (
           const thumbnailBuffer = await getThumbnail(
             file.fileId,
             file.accessHash,
-            file.fileReference
+            file.fileReference,
+            file.dcId
           );
           console.log(
             "Video Thumbnail Buffer Length:",
@@ -88,11 +97,15 @@ export const getFilesByUserId = async (
           );
           return {
             ...file,
-            thumbnail: thumbnailBuffer.toString("base64"),
+            fileReference: decodedFileReference,
+            thumbnail: thumbnailBuffer?.toString("base64"),
           };
         }
 
-        return file;
+        return {
+          ...file,
+          fileReference: decodedFileReference,
+        };
       })
     );
 
@@ -104,13 +117,13 @@ export const getFilesByUserId = async (
   }
 };
 
-export async function uploadFileToTelegram(file: any) {
+export async function uploadFileToTelegram(file: globalThis.File) {
   try {
     if (!telegram) throw new Error("Telegram client is not initialized");
 
     const uploadedFile = await telegram.uploadFile({ file, workers: 1 });
 
-    const result = await telegram.invoke(
+    const result = (await telegram.invoke(
       new Api.messages.SendMedia({
         peer: process.env.TELEGRAM_STORAGE_CHAT_ID,
         media: new Api.InputMediaUploadedDocument({
@@ -122,16 +135,16 @@ export async function uploadFileToTelegram(file: any) {
           forceFile: true,
         }),
         message: `Uploaded ${file.name}`,
-        randomId: BigInt(Math.floor(Math.random() * 1e18)),
+        randomId: BigInt(Math.floor(Math.random() * 1e18)) as any,
       })
-    );
+    )) as any;
 
     if (!result?.updates?.length)
       throw new Error("Failed to retrieve message ID.");
 
-    const messageUpdate = result.updates.find(
-      (update) => update.className === "UpdateNewChannelMessage"
-    );
+    const messageUpdate = (result.updates as any).find(
+      (update: any) => update.className === "UpdateNewChannelMessage"
+    ) as any;
 
     if (!messageUpdate || !messageUpdate.message || !messageUpdate.message.id) {
       throw new Error("Message ID not found.");
@@ -177,7 +190,7 @@ export const fileUploader = async ({ file, user_id }: fileUploaderType) => {
         fileId,
         accessHash,
         dcId,
-        fileReference: Buffer.from(fileReference),
+        fileReference: fileReference,
         messageId,
       },
     });

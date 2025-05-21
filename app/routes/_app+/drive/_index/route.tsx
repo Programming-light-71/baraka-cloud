@@ -23,47 +23,65 @@ import { useDisappearUpgradeBanner } from "~/local_store+state/Drive/useDisappea
 import { FileUpload } from "~/components/drive/file&Folder/FileUpload";
 import { telegram } from "~/services/telegram.server";
 import { PassThrough } from "stream";
-import { Api } from "telegram";
 
 export async function action({ request }: ActionFunctionArgs) {
   try {
     const user = await requireAuth(request);
     const formData = await request.formData();
-    const file = formData.get("file");
     const intent = formData.get("download");
 
-    if (intent) {
+    if (intent === "true") {
       const id = formData.get("fileId") as string;
-      const accessHash = BigInt(formData.get("accessHash") as string);
+      const accessHash = formData.get("accessHash") as string;
       const fileReferenceBase64 = formData.get("fileReference") as string;
       const fileName = formData.get("fileName") as string;
 
-      const fileId = BigInt(id);
+      if (!fileReferenceBase64) {
+        console.error("fileReferenceBase64 is undefined");
+        return new Response("fileReferenceBase64 is undefined", {
+          status: 400,
+        });
+      }
+
+      const fileId = BigInt(id) as any;
       const fileReference = Buffer.from(fileReferenceBase64, "base64");
 
       const client = telegram;
-
-      const inputDocument = new Api.InputDocument({
+      console.log("object", { id, accessHash, fileReference, client });
+      const inputDocument = {
         id: fileId,
-        accessHash,
+        accessHash: BigInt(accessHash),
         fileReference,
-      });
+      } as any;
 
       const stream = new PassThrough();
 
-      await client.downloadMedia(inputDocument, {
+      await (telegram as any).downloadMedia(inputDocument, {
         file: stream,
       });
 
-      return new Response(stream as any, {
-        headers: {
-          "Content-Type": "application/octet-stream",
-          "Content-Disposition": `attachment; filename="${encodeURIComponent(
-            fileName
-          )}"`,
-        },
-      });
+      const chunks = [];
+      for await (const chunk of stream) {
+        chunks.push(chunk);
+      }
+      const fileBuffer = Buffer.concat(chunks);
+      const base64 = fileBuffer.toString("base64");
+
+      return new Response(
+        JSON.stringify({
+          base64,
+          fileName,
+          mimeType: "application/octet-stream",
+        }),
+        {
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      );
     }
+
+    const file = formData.get("file");
 
     // ✅ Move this block inside the try
     if (!file || !(file instanceof globalThis.File)) {

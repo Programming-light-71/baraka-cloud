@@ -1,61 +1,59 @@
-import { ReactNode } from "react";
-import toast from "react-hot-toast";
-import { downloadTelegramFile } from "~/utils/backend-utils/downloadTelegramFile"; // We'll define this
+import { ReactNode, useEffect, useCallback } from "react";
+
+interface DownloadButtonProps {
+  id: string;
+  fileReference: string;
+  accessHash: string;
+  fileName: string;
+  btnText?: ReactNode | string;
+}
 
 export function DownloadButton({
   id,
-  fileId,
   fileReference,
   accessHash,
   fileName,
-  type,
   btnText,
-  dcId = 5, // optional
-}: {
-  id: string;
-  fileId: string;
-  fileReference: string; // JSON stringified version
-  accessHash: string;
-  fileName: string;
-  type: string;
-  btnText?: ReactNode | string;
-  dcId?: number;
-}) {
-  console.log("DownloadButton Props:", {
-    id,
-    fileId,
-    fileReference,
-    accessHash,
-    fileName,
-    type,
-    btnText,
-    dcId,
-  });
-  const handleDownload = async () => {
+}: DownloadButtonProps) {
+  const handleDownload = useCallback(async () => {
     try {
-      toast.loading(`Downloading ${fileName}...`);
-      await downloadTelegramFile({
-        fileId,
-        accessHash,
-        dcId,
-        fileName,
-        fileReference: JSON.parse(fileReference), // must be an object
-      });
+      const response = await fetch(`/api/download/${id}:${accessHash}`);
 
-      toast.dismiss();
-      toast.success("Download successful!");
-    } catch (err) {
-      toast.dismiss();
-      toast.error("Download failed!");
-      console.error(err);
+      if (!response.ok) {
+        console.error("Download failed");
+        return;
+      }
+
+      const data = await response.json();
+      const base64 = data.base64;
+      const fileName = data.fileName;
+      const mimeType = data.mimeType;
+
+      const link = document.createElement("a");
+      link.href = `data:${mimeType};base64,${base64}`;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch (error) {
+      console.error("Download failed:", error);
     }
-  };
+  }, [id, accessHash, fileReference, fileName]);
+
+  useEffect(() => {}, [
+    handleDownload,
+    id,
+    accessHash,
+    fileReference,
+    fileName,
+  ]);
 
   return (
     <button
-      onClick={() => handleDownload}
-      title="Download File"
+      type="button"
       className="flex gap-2"
+      title="Download File"
+      onClick={handleDownload}
     >
       {btnText || "Download"}
     </button>

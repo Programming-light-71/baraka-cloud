@@ -1,28 +1,33 @@
 import { LoaderFunctionArgs } from "@remix-run/node";
-import { downloadFile } from "~/services/download.server";
-import { prisma } from "~/services/telegram.server";
+import { Buffer } from "buffer";
+import { downloadTelegramFile } from "~/utils/backend-utils/downloadTelegramFile";
 
 export const loader = async ({ params }: LoaderFunctionArgs) => {
-  const fileId = params.id;
-  if (!fileId) throw new Response("Not found", { status: 404 });
+  const [fileId, accessHash] = params.id?.split(":") || [];
+  if (!fileId || !accessHash) throw new Error("Invalid file ID");
 
   try {
-    const { file, type, fileName } = await downloadFile(fileId);
-
-    return new Response(
-      JSON.stringify({
-        type,
-        file,
-        fileName,
-      }),
-      {
-        headers: {
-          "Content-Type": "application/json",
-        },
-      }
+    const { base64, fileName, mimeType } = await downloadTelegramFile(
+      fileId,
+      accessHash
     );
+
+    // Ensure base64 data has correct encoding
+    const base64Data = base64.includes("base64,")
+      ? base64.split("base64,")[1]
+      : base64;
+
+    const fileBuffer = Buffer.from(base64Data, "base64");
+
+    return new Response(fileBuffer, {
+      headers: {
+        "Content-Type": mimeType,
+        "Content-Disposition": `attachment; filename="${fileName}"`,
+        "Content-Length": fileBuffer.length.toString(),
+      },
+    });
   } catch (error) {
     console.error("Download failed:", error);
-    throw new Response("Download failed", { status: 500 });
+    throw new Error("Download failed");
   }
 };

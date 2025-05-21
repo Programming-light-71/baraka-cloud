@@ -6,6 +6,7 @@ import {
   ScrollRestoration,
   useRouteError,
 } from "@remix-run/react";
+import React from "react";
 import type { LinksFunction } from "@remix-run/node";
 
 import "./tailwind.css";
@@ -58,7 +59,9 @@ export function Layout({ children }: { children: React.ReactNode }) {
 export default function App() {
   return (
     <>
-      <Outlet />;
+      <React.Suspense fallback={<>Loading...</>}>
+        <Outlet />
+      </React.Suspense>
     </>
   );
 }

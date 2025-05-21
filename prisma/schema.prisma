@@ -32,6 +32,8 @@ model User {
   sharedFiles      SharedFile[]
   trash            Trash[]
   tasks            Task[]
+
+  @@index([email])
 }
 
 // otp verification schema
@@ -43,6 +45,10 @@ model OtpVerification {
   expiresAt DateTime
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([otp])
+  @@index([userId])
+  @@index([email])
 }
 
 model Folder {

@@ -16,21 +16,22 @@ export async function downloadTelegramFile({
   fileName: string;
 }) {
   try {
-    const inputFileLocation = new Api.InputDocumentFileLocation({
-      id: fileId,
-      accessHash,
-      fileReference: Buffer.from(Object.values(fileReference)),
-      thumbSize: "",
-    });
+    // const inputFileLocation = new Api.InputDocumentFileLocation({
+    //   id: fileId,
+    //   accessHash,
+    //   fileReference: Buffer.from(Object.values(fileReference)),
+    //   thumbSize: "",
+    // });
 
-    const file = await telegram.downloadFile(dcId, {
-      location: inputFileLocation,
-      dcId,
-      fileSize: 0,
-      workers: 1,
-    });
+    // const file = await telegram.downloadFile(dcId, {
+    //   location: inputFileLocation,
+    //   dcId,
+    //   fileSize: 0,
+    //   workers: 1,
+    // });
 
     // Create a download URL for the file
+
     const blob = new Blob([file]);
     const url = URL.createObjectURL(blob);
 

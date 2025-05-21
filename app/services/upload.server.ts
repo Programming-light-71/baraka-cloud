@@ -1,6 +1,6 @@
-import { Api } from "telegram";
 import { telegram, prisma } from "./telegram.server";
 import { Buffer } from "buffer";
+import { Api } from "telegram";
 
 export async function uploadFile(file: File, userId: string) {
   try {
@@ -55,7 +55,7 @@ export async function uploadFile(file: File, userId: string) {
         fileId: doc.id.toString(),
         accessHash: doc.accessHash.toString(),
         dcId: doc.dcId,
-        fileReference: Buffer.from(doc.fileReference),
+        fileReference: Buffer.from(String(doc.fileReference)),
         messageId: message.id.toString(),
         expiresAt: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
       },
