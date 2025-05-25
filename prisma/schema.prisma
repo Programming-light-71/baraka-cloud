@@ -67,20 +67,26 @@ model File {
   userId        String
   name          String
   type          String
-  size          Int // Changed from String to Int for better sorting/filtering
-  accessHash    String
-  dcId          Int
-  fileReference Bytes
-  fileId        String
-  messageId     String? // Crucial for reference refreshes
+  size          Int
+  // Telegram file identifiers
+  accessHash    String // Essential for file access
+  dcId          Int // Data center ID (essential)
+  fileReference Bytes // Temporary access token (must be refreshable)
+  fileId        String // Unique Telegram file ID
+  // Message context for refreshes
+  messageId     String // Changed from optional to required
+  chatId        String? // NEW: Critical for reference refreshes
+  // File metadata
   duration      Int?
-  thumbnail     String? // Consider changing to Bytes if storing binary thumbnails
+  thumbnail     String?
+  // Status flags
   isStarred     Boolean   @default(false)
   isShared      Boolean   @default(false)
+  // Timestamps
   deletedAt     DateTime?
   createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt // Renamed from lastUpdatedAt for consistency
-  expiresAt     DateTime? // New: For automatic cleanup
+  updatedAt     DateTime  @updatedAt
+  expiresAt     DateTime?
 
   // Relations
   folder     Folder?      @relation(fields: [folderId], references: [id], onDelete: SetNull)
@@ -88,13 +94,15 @@ model File {
   trash      Trash[]
   sharedFile SharedFile[]
 
-  // Add indexes for performance
+  // Indexes
   @@index([userId])
   @@index([folderId])
   @@index([createdAt])
   @@index([expiresAt])
   @@index([isStarred])
   @@index([isShared])
+  @@index([fileId]) // NEW: Important for lookups
+  @@index([messageId]) // NEW: Important for refreshes
 }
 
 model SharedFile {

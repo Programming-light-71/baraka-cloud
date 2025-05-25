@@ -2,6 +2,7 @@ import { Api } from "telegram";
 import { telegram, prisma } from "./telegram.server";
 import { Buffer } from "buffer";
 import { convertBufferToBase64 } from "~/utils/shared-utils/ConvertIntoBase64Formate";
+import bigInt from "big-integer";
 
 interface FileMetadata {
   fileId: string;
@@ -61,7 +62,7 @@ export async function downloadFile(
   const location = await getFileLocationWithRefresh(fileMetadata);
 
   const chunkSize = 1024 * 1024; // 1MB
-  let offset = 0;
+  let offset = bigInt(0);
   let downloadedBytes = 0;
   const chunks: Buffer[] = [];
 
@@ -69,7 +70,7 @@ export async function downloadFile(
     while (downloadedBytes < fileMetadata.size) {
       const limit = Math.min(chunkSize, fileMetadata.size - downloadedBytes);
 
-      const fileResult: any = await telegram.invoke(
+      const fileResult = await telegram.invoke(
         new Api.upload.GetFile({
           location,
           offset,
@@ -81,28 +82,24 @@ export async function downloadFile(
         const buffer = Buffer.from(fileResult.bytes);
         chunks.push(buffer);
         downloadedBytes += buffer.length;
-        offset += buffer.length;
+        offset = offset.add(bigInt(buffer.length));
 
         const progress = Math.round(
           (downloadedBytes / fileMetadata.size) * 100
         );
-        console.log(
-          `Downloaded ${downloadedBytes} bytes / ${fileMetadata.size} bytes (${progress}%)`
-        );
-      } else {
-        throw new Error("Unexpected file result type");
+        progressCallback?.(progress);
       }
     }
 
-    const file = Buffer.concat(chunks);
-
+    const finalBuffer = Buffer.concat(chunks);
     return {
-      file,
-      type: fileMetadata.type,
+      success: true,
+      base64: convertBufferToBase64(finalBuffer),
+      mimeType: fileMetadata.type,
       fileName: fileMetadata.name,
     };
-  } catch (error: any) {
-    console.error("Error downloading file:", error);
+  } catch (error) {
+    console.error("Download failed:", error);
     throw new Error("Failed to download file");
   }
 }
@@ -116,22 +113,26 @@ async function getFileLocationWithRefresh(
       console.error("file.fileReference is undefined");
       throw new Error("file.fileReference is undefined");
     }
-    let id = String(file.fileId);
-    let accessHash = String(file.accessHash);
+    const id = String(file.fileId);
+    const accessHash = String(file.accessHash);
     const fileLocation = new Api.InputDocumentFileLocation({
-      id: BigInt(id),
-      accessHash: BigInt(accessHash),
+      id: bigInt(id),
+      accessHash: bigInt(accessHash),
       fileReference: file.fileReference,
       thumbSize: "",
     });
     return fileLocation;
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.log(error);
     if (attempt > 3) {
       throw new Error("Failed to get file location after multiple attempts");
     }
 
-    if (error.message?.includes("FILE_REFERENCE_EXPIRED") && file.messageId) {
+    if (
+      error instanceof Error &&
+      error.message?.includes("FILE_REFERENCE_EXPIRED") &&
+      file.messageId
+    ) {
       console.log("File reference expired, refreshing...");
       await refreshFileReference(file);
       return getFileLocationWithRefresh(file, attempt + 1);
@@ -141,28 +142,40 @@ async function getFileLocationWithRefresh(
   }
 }
 
-async function refreshFileReference(file: FileMetadata) {
-  const result: any = await telegram.invoke(
+export async function refreshFileReference(file: FileMetadata) {
+  const result = await telegram.invoke(
     new Api.messages.GetMessages({
       id: [new Api.InputMessageID({ id: parseInt(file.messageId || "0") })],
     })
   );
 
-  if (!result?.messages) {
+  if (!(result instanceof Api.messages.Messages) || !result.messages.length) {
     throw new Error("No messages received");
   }
 
-  if (result?.messages && result.messages[0]?.media?.document) {
-    const doc = result.messages[0].media.document;
-    await prisma.file.update({
-      where: { id: file.id },
-      data: {
-        fileReference: Buffer.from(doc.fileReference),
-      },
-    });
-  } else {
-    console.warn(
-      "Could not refresh file reference, missing messages or document"
-    );
+  const message = result.messages[0];
+  if (!(message instanceof Api.Message)) {
+    throw new Error("Invalid message type");
   }
+
+  const media = message.media;
+  if (!(media instanceof Api.MessageMediaDocument) || !media.document) {
+    throw new Error("Message does not contain a document");
+  }
+
+  const doc = media.document;
+  if (!(doc instanceof Api.Document)) {
+    throw new Error("Invalid document type");
+  }
+
+  if (!doc.fileReference) {
+    throw new Error("Document does not have a file reference");
+  }
+
+  await prisma.file.update({
+    where: { id: file.id },
+    data: {
+      fileReference: Buffer.from(doc.fileReference),
+    },
+  });
 }

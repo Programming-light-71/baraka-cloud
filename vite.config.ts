@@ -28,20 +28,15 @@ export default defineConfig({
     tsconfigPaths(),
   ],
   build: {
-    target: 'esnext',
-    minify: true,
+    target: "esnext",
+    minify: false,
     rollupOptions: {
       output: {
-        format: 'esm',
-        manualChunks: undefined
-      }
+        format: "esm",
+        manualChunks: undefined,
+      },
     },
     sourcemap: true,
-    ssr: {
-      noExternal: true
-    }
+    ssr: false,
   },
-  server: {
-    hmr: true
-  }
 });

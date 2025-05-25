@@ -15,6 +15,20 @@ interface fileUploaderType {
 ====================================================*/
 
 // getFileByFileId
+
+export async function getFileById(id: string) {
+  try {
+    const file = await db.file.findUnique({
+      where: { id },
+    });
+
+    return file;
+  } catch (error) {
+    console.error("Error in getFileById:", error);
+    return null;
+  }
+}
+
 export const getFileByFileId = async (fileId: string, isUrl?: boolean) => {
   // console.log("fileId", fileId);
   const response = await fetch(

@@ -44,7 +44,14 @@ export async function action({ request }: ActionFunctionArgs) {
 
       const downloadableFile = await getFile({ fileId: id as string });
       console.log("object of download", { downloadableFile, type, fileName });
-      return { file: downloadableFile?.toString("base64"), type, fileName };
+      return new Response(
+        JSON.stringify({
+          file: downloadableFile?.toString("base64"),
+          type,
+          fileName,
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } }
+      );
     } else {
       if (!file || !(file instanceof globalThis.File)) {
         return new Response(

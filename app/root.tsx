@@ -11,6 +11,8 @@ import type { LinksFunction } from "@remix-run/node";
 
 import "./tailwind.css";
 import { ThemeProvider } from "./components/theme/theme-provider";
+import { FileTransferProvider } from "./contexts/FileTransferContext";
+import { FileTransferList } from "./components/drive/DOWNLOAD/FileTransferList";
 
 export const links: LinksFunction = () => [
   { rel: "preconnect", href: "https://fonts.googleapis.com" },
@@ -41,13 +43,17 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <Links />
       </head>
       <body>
+        {" "}
         <ThemeProvider
           attribute="class"
           defaultTheme="system"
           enableSystem
           disableTransitionOnChange
         >
-          {children}
+          <FileTransferProvider>
+            {children}
+            <FileTransferList />
+          </FileTransferProvider>
         </ThemeProvider>
         <ScrollRestoration />
         <Scripts />
